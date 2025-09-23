@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Database Viewer – Lake Serinity</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+  <div class="max-w-6xl mx-auto p-6 space-y-8">
+    <div class="flex items-center justify-between">
+      <h1 class="text-2xl font-semibold">Database Viewer</h1>
+      <div class="space-x-2">
+        <a href="/admin/db" class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">Download DB</a>
+        <a href="/chat" class="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Back to Chat</a>
+      </div>
+    </div>
+
+    <section class="bg-white shadow rounded p-4">
+      <h2 class="text-lg font-semibold mb-2">Tables (first 50)</h2>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="text-left px-3 py-2">ID</th>
+              <th class="text-left px-3 py-2">View</th>
+              <th class="text-left px-3 py-2">Capacity</th>
+              <th class="text-left px-3 py-2">Available</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in tables %}
+            <tr class="border-t">
+              <td class="px-3 py-2">{{ t.id }}</td>
+              <td class="px-3 py-2">{{ t.view }}</td>
+              <td class="px-3 py-2">{{ t.capacity }}</td>
+              <td class="px-3 py-2">{{ 'Yes' if t.is_available else 'No' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="px-3 py-6 text-center text-gray-500">No tables found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="bg-white shadow rounded p-4">
+      <h2 class="text-lg font-semibold mb-2">Reservations (latest 50)</h2>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="text-left px-3 py-2">ID</th>
+              <th class="text-left px-3 py-2">Name</th>
+              <th class="text-left px-3 py-2">Email</th>
+              <th class="text-left px-3 py-2">Phone</th>
+              <th class="text-left px-3 py-2">Time</th>
+              <th class="text-left px-3 py-2">Party</th>
+              <th class="text-left px-3 py-2">Table</th>
+              <th class="text-left px-3 py-2">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in reservations %}
+            <tr class="border-t">
+              <td class="px-3 py-2">{{ r.id }}</td>
+              <td class="px-3 py-2">{{ r.customer_name }}</td>
+              <td class="px-3 py-2">{{ r.customer_email }}</td>
+              <td class="px-3 py-2">{{ r.customer_phone }}</td>
+              <td class="px-3 py-2">{{ r.reservation_time }}</td>
+              <td class="px-3 py-2">{{ r.party_size }}</td>
+              <td class="px-3 py-2">{{ r.table_id }}</td>
+              <td class="px-3 py-2">{{ r.status }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="px-3 py-6 text-center text-gray-500">No reservations found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="bg-white shadow rounded p-4">
+      <h2 class="text-lg font-semibold mb-2">Reservation Items (latest 50)</h2>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="text-left px-3 py-2">ID</th>
+              <th class="text-left px-3 py-2">Reservation</th>
+              <th class="text-left px-3 py-2">Menu Item</th>
+              <th class="text-left px-3 py-2">Qty</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in items %}
+            <tr class="border-t">
+              <td class="px-3 py-2">{{ it.id }}</td>
+              <td class="px-3 py-2">{{ it.reservation_id }}</td>
+              <td class="px-3 py-2">{{ it.menu_item_id }}</td>
+              <td class="px-3 py-2">{{ it.quantity }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="px-3 py-6 text-center text-gray-500">No reservation items found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

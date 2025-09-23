@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lake Serinity – Booking Chatbot</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+  <div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-2xl bg-white rounded-lg shadow-md">
+      <div class="px-6 py-4 border-b">
+        <h1 class="text-xl font-semibold">Lake Serinity – Booking Chatbot</h1>
+        <p class="text-gray-500 text-sm">I can help you book a table. Start by saying "Hi" or share your full name.</p>
+      </div>
+      <div id="chat" class="h-96 overflow-y-auto p-4 space-y-3 bg-gray-50"></div>
+      <div class="p-4 border-t flex flex-col space-y-3">
+        <div class="flex space-x-2 items-center">
+          <input id="input" type="text" class="flex-1 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Type your message..." />
+          <button id="mic" title="Speak" class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-800">🎙️</button>
+          <button id="send" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Send</button>
+        </div>
+        <div class="flex items-center justify-between text-sm text-gray-600">
+          <div class="flex items-center space-x-2">
+            <input type="checkbox" id="tts-toggle" class="h-4 w-4">
+            <label for="tts-toggle">Speak bot replies</label>
+          </div>
+        </div>
+        <div class="flex space-x-2 justify-end">
+          <button id="btn-customers" class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-800">View Customers</button>
+          <button id="btn-db" class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300 text-gray-800">View Database</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const chat = document.getElementById('chat');
+    const input = document.getElementById('input');
+    const send = document.getElementById('send');
+    let sessionId = null;
+
+    function appendMessage(text, outgoing=false) {
+      const bubble = document.createElement('div');
+      bubble.className = `px-4 py-2 rounded-lg ${outgoing ? 'bg-indigo-600 text-white self-end' : 'bg-white border'}`;
+      bubble.textContent = text;
+      chat.appendChild(bubble);
+      chat.scrollTop = chat.scrollHeight;
+      // Optional TTS for bot replies
+      if (!outgoing && document.getElementById('tts-toggle').checked && 'speechSynthesis' in window) {
+        try {
+          const utter = new SpeechSynthesisUtterance(String(text));
+          utter.rate = 1.0;
+          window.speechSynthesis.cancel();
+          window.speechSynthesis.speak(utter);
+        } catch (e) { /* ignore */ }
+      }
+    }
+
+    async function sendMessage() {
+      const msg = input.value.trim();
+      if (!msg) return;
+      appendMessage(msg, true);
+      input.value = '';
+
+      try {
+        const res = await fetch('/api/chatbot/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId, message: msg })
+        });
+        const data = await res.json();
+        sessionId = data.session_id || sessionId;
+        appendMessage(data.reply || '');
+      } catch (e) {
+        appendMessage('Sorry, something went wrong.');
+      }
+    }
+
+    send.addEventListener('click', sendMessage);
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
+
+    // Voice input (Web Speech API)
+    const MicRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    if (MicRecognition) {
+      recognition = new MicRecognition();
+      recognition.lang = 'en-IN';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        input.value = transcript;
+        sendMessage();
+      };
+      recognition.onerror = () => { /* ignore */ };
+    }
+    const micBtn = document.getElementById('mic');
+    micBtn.addEventListener('click', () => {
+      if (!recognition) {
+        alert('Voice input not supported on this browser.');
+        return;
+      }
+      try {
+        recognition.start();
+        micBtn.disabled = true;
+        micBtn.textContent = '🎙️…';
+      } catch {}
+    });
+    if (recognition) {
+      recognition.onend = () => { micBtn.disabled = false; micBtn.textContent = '🎙️'; };
+    }
+
+    // admin buttons
+    document.getElementById('btn-customers').addEventListener('click', () => {
+      window.open('/admin/customers', '_blank');
+    });
+    document.getElementById('btn-db').addEventListener('click', () => {
+      window.open('/admin/db/view', '_blank');
+    });
+
+    // greet
+    (async () => {
+      const res = await fetch('/api/chatbot/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, message: '' })
+      });
+      const data = await res.json();
+      sessionId = data.session_id;
+      appendMessage(data.reply);
+    })();
+  </script>
+</body>
+</html>

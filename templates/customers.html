@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Customers – Lake Serinity</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50">
+  <div class="max-w-5xl mx-auto p-6">
+    <h1 class="text-2xl font-semibold mb-4">Today's Customers</h1>
+    <div class="overflow-x-auto bg-white shadow rounded">
+      <table class="min-w-full text-sm">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="text-left px-4 py-2">ID</th>
+            <th class="text-left px-4 py-2">Name</th>
+            <th class="text-left px-4 py-2">Party</th>
+            <th class="text-left px-4 py-2">Time</th>
+            <th class="text-left px-4 py-2">Table</th>
+            <th class="text-left px-4 py-2">View</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+          <tr class="border-t">
+            <td class="px-4 py-2">{{ r.id }}</td>
+            <td class="px-4 py-2">{{ r.name }}</td>
+            <td class="px-4 py-2">{{ r.party }}</td>
+            <td class="px-4 py-2">{{ r.time }}</td>
+            <td class="px-4 py-2">{{ r.table }}</td>
+            <td class="px-4 py-2">{{ r.view }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td class="px-4 py-6 text-center text-gray-500" colspan="6">No bookings today.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="mt-4">
+      <a href="/admin/db" class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">Download Database</a>
+      <a href="/chat" class="ml-2 px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Back to Chat</a>
+    </div>
+  </div>
+</body>
+</html>

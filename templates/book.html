@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Table Booking</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.3s;
+        }
+        .fade-enter, .fade-leave-to {
+            opacity: 0;
+        }
+        .table-card {
+            transition: all 0.3s ease;
+        }
+        .table-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    {% raw %}
+    <div class="min-h-screen" id="app">
+        <!-- Header -->
+        <header class="bg-indigo-600 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-3xl font-bold">Gourmet Delights</h1>
+                    <nav>
+                        <ul class="flex space-x-6">
+                            <li><a href="#" class="hover:text-indigo-200">Home</a></li>
+                            <li><a href="#" class="hover:text-indigo-200">Menu</a></li>
+                            <li><a href="#" class="hover:text-indigo-200">About</a></li>
+                            <li><a href="#" class="hover:text-indigo-200">Contact</a></li>
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 py-8">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">Book a Table</h2>
+                
+                <!-- Booking Form -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                    <form @submit.prevent="checkAvailability" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                <input v-model="formData.name" type="text" id="name" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input v-model="formData.email" type="email" id="email" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                <input v-model="formData.phone" type="tel" id="phone" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label for="partySize" class="block text-sm font-medium text-gray-700 mb-1">Party Size</label>
+                                <select v-model.number="formData.partySize" id="partySize" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option v-for="n in 20" :key="n" :value="n">{{ n }} {{ n === 1 ? 'person' : 'people' }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                                <input v-model="formData.date" type="date" id="date" required
+                                    :min="today"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            </div>
+                            <div>
+                                <label for="time" class="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                                <select v-model="formData.time" id="time" required
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option v-for="time in availableTimes" :key="time" :value="time">{{ time }}</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="view" class="block text-sm font-medium text-gray-700 mb-1">Preferred View</label>
+                                <select v-model="formData.preferredView" id="view"
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="">No preference</option>
+                                    <option value="window">Window View</option>
+                                    <option value="garden">Garden View</option>
+                                    <option value="private">Private Room</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="specialRequests" class="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
+                            <textarea v-model="formData.specialRequests" id="specialRequests" rows="3"
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                        </div>
+                        
+                        <div class="flex justify-end">
+                            <button type="submit" 
+                                class="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                                :disabled="isLoading">
+                                <span v-if="!isLoading">Check Availability</span>
+                                <span v-else>
+                                    <i class="fas fa-spinner fa-spin mr-2"></i> Checking...
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Loading State -->
+                <div v-if="isLoading" class="text-center py-8">
+                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600 mb-4"></div>
+                    <p class="text-gray-600">Finding the best tables for you...</p>
+                </div>
+                
+                <!-- Error Message -->
+                <div v-if="error" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-8" role="alert">
+                    <p class="font-bold">Error</p>
+                    <p>{{ error }}</p>
+                </div>
+                
+                <!-- Table Suggestions -->
+                <div v-if="showSuggestions" class="mt-8">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">{{ suggestionMessage }}</h3>
+                    
+                    <div v-if="suggestedTables.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div v-for="(table, index) in suggestedTables" :key="index" 
+                             class="bg-white rounded-lg shadow-md overflow-hidden table-card">
+                            <div class="p-6">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h4 class="text-lg font-semibold text-gray-800">Table for {{ table.capacity }}</h4>
+                                        <p class="text-sm text-gray-600">{{ table.view | capitalize }} View</p>
+                                    </div>
+                                    <span class="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                        Available
+                                    </span>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <p class="text-sm text-gray-600 mb-2">Features:</p>
+                                    <div class="flex flex-wrap gap-2">
+                                        <span v-for="(feature, i) in table.features" :key="i"
+                                              class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                                            {{ feature.name }}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <button @click="confirmBooking(table.id)"
+                                    class="w-full mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                                    Book This Table
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div v-else class="text-center py-8 bg-yellow-50 rounded-lg">
+                        <i class="fas fa-info-circle text-yellow-500 text-4xl mb-4"></i>
+                        <p class="text-yellow-700">No tables available for the selected criteria. Please try a different time or party size.</p>
+                    </div>
+                </div>
+                
+                <!-- Booking Confirmation -->
+                <div v-if="bookingConfirmed" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div class="bg-white rounded-lg p-8 max-w-md w-full">
+                        <div class="text-center">
+                            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
+                                <i class="fas fa-check text-green-600 text-xl"></i>
+                            </div>
+                            <h3 class="mt-3 text-lg font-medium text-gray-900">Booking Confirmed!</h3>
+                            <div class="mt-4 text-sm text-gray-500">
+                                <p class="mb-2">Your reservation has been confirmed for:</p>
+                                <p class="font-medium">{{ formatDate(bookingDetails.reservation_time) }} at {{ formatTime(bookingDetails.reservation_time) }}</p>
+                                <p class="mt-2">Table for {{ bookingDetails.party_size }}</p>
+                                <p class="mt-4">A confirmation has been sent to {{ bookingDetails.customer_email }}</p>
+                            </div>
+                            <div class="mt-6">
+                                <button @click="resetForm"
+                                    class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                                    Make Another Reservation
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-8">
+            <div class="container mx-auto px-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">Gourmet Delights</h3>
+                        <p class="text-gray-400">Experience the finest dining with our exquisite menu and exceptional service.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">Contact Us</h3>
+                        <address class="text-gray-400 not-italic">
+                            <p>123 Gourmet Street</p>
+                            <p>Foodie City, FC 12345</p>
+                            <p>Phone: (555) 123-4567</p>
+                            <p>Email: info@gourmetdelights.com</p>
+                        </address>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">Hours</h3>
+                        <ul class="text-gray-400 space-y-1">
+                            <li>Monday - Thursday: 11:00 AM - 10:00 PM</li>
+                            <li>Friday - Saturday: 11:00 AM - 11:00 PM</li>
+                            <li>Sunday: 10:00 AM - 9:00 PM</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="border-t border-gray-700 mt-8 pt-6 text-center text-gray-400">
+                    <p>&copy; 2023 Gourmet Delights. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Vue.js -->
+    <script src="https://unpkg.com/vue@3.2.31/dist/vue.global.prod.js"></script>
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+        
+        createApp({
+            setup() {
+                // Form data
+                const formData = ref({
+                    name: '',
+                    email: '',
+                    phone: '',
+                    partySize: 2,
+                    date: '',
+                    time: '18:00',
+                    preferredView: '',
+                    specialRequests: ''
+                });
+                
+                // UI state
+                const isLoading = ref(false);
+                const error = ref('');
+                const showSuggestions = ref(false);
+                const bookingConfirmed = ref(false);
+                const suggestedTables = ref([]);
+                const suggestionMessage = ref('');
+                const bookingDetails = ref({});
+                
+                // Available times for booking
+                const availableTimes = [
+                    '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00',
+                    '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00'
+                ];
+                
+                // Today's date in YYYY-MM-DD format
+                const today = new Date().toISOString().split('T')[0];
+                
+                // Format date for display
+                const formatDate = (dateString) => {
+                    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                    return new Date(dateString).toLocaleDateString('en-US', options);
+                };
+                
+                // Format time for display
+                const formatTime = (dateString) => {
+                    const options = { hour: '2-digit', minute: '2-digit', hour12: true };
+                    return new Date(dateString).toLocaleTimeString('en-US', options);
+                };
+                
+                // Check table availability
+                const checkAvailability = async () => {
+                    if (!formData.value.date) {
+                        error.value = 'Please select a date';
+                        return;
+                    }
+                    
+                    isLoading.value = true;
+                    error.value = '';
+                    showSuggestions.value = false;
+                    
+                    try {
+                        // Convert date and time to ISO string
+                        const dateTime = new Date(`${formData.value.date}T${formData.value.time}`).toISOString();
+                        
+                        // Call the API to check availability
+                        const response = await fetch(`/api/availability?party_size=${formData.value.partySize}&reservation_time=${encodeURIComponent(dateTime)}&preferred_view=${formData.value.preferredView}`);
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.detail || 'Failed to check availability');
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.tables && data.tables.length > 0) {
+                            suggestedTables.value = data.tables;
+                            suggestionMessage.value = data.is_exact_match 
+                                ? 'We found the perfect table for you!' 
+                                : 'We found some great alternatives for your party:';
+                        } else {
+                            suggestionMessage.value = data.message || 'No tables available for the selected criteria.';
+                        }
+                        
+                        showSuggestions.value = true;
+                    } catch (err) {
+                        console.error('Error checking availability:', err);
+                        error.value = err.message || 'An error occurred while checking availability. Please try again.';
+                    } finally {
+                        isLoading.value = false;
+                    }
+                };
+                
+                // Confirm booking
+                const confirmBooking = async (tableId) => {
+                    if (!formData.value.date) return;
+                    
+                    isLoading.value = true;
+                    error.value = '';
+                    
+                    try {
+                        // Convert date and time to ISO string
+                        const dateTime = new Date(`${formData.value.date}T${formData.value.time}`).toISOString();
+                        
+                        // Prepare reservation data
+                        const reservationData = {
+                            customer_name: formData.value.name,
+                            customer_email: formData.value.email,
+                            customer_phone: formData.value.phone,
+                            reservation_time: dateTime,
+                            party_size: formData.value.partySize,
+                            preferred_view: formData.value.preferredView || null,
+                            special_requests: formData.value.specialRequests || null,
+                            table_id: tableId
+                        };
+                        
+                        // Call the API to create reservation
+                        const response = await fetch('/api/reservations', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(reservationData)
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.detail || 'Failed to create reservation');
+                        }
+                        
+                        const data = await response.json();
+                        
+                        if (data.success) {
+                            bookingDetails.value = {
+                                ...data.reservation,
+                                reservation_time: new Date(data.reservation.reservation_time)
+                            };
+                            bookingConfirmed.value = true;
+                        } else if (data.suggestions) {
+                            // Handle alternative suggestions
+                            suggestedTables.value = data.suggestions.tables || [];
+                            suggestionMessage.value = data.message || 'We found some alternatives for your party:';
+                            showSuggestions.value = true;
+                        }
+                    } catch (err) {
+                        console.error('Error creating reservation:', err);
+                        error.value = err.message || 'An error occurred while creating your reservation. Please try again.';
+                    } finally {
+                        isLoading.value = false;
+                    }
+                };
+                
+                // Reset the form
+                const resetForm = () => {
+                    formData.value = {
+                        name: formData.value.name,
+                        email: formData.value.email,
+                        phone: formData.value.phone,
+                        partySize: 2,
+                        date: '',
+                        time: '18:00',
+                        preferredView: '',
+                        specialRequests: ''
+                    };
+                    bookingConfirmed.value = false;
+                    showSuggestions.value = false;
+                    error.value = '';
+                };
+                
+                // Set today's date as default
+                onMounted(() => {
+                    formData.value.date = today;
+                });
+                
+                return {
+                    formData,
+                    isLoading,
+                    error,
+                    showSuggestions,
+                    bookingConfirmed,
+                    suggestedTables,
+                    suggestionMessage,
+                    bookingDetails,
+                    availableTimes,
+                    today,
+                    checkAvailability,
+                    confirmBooking,
+                    resetForm,
+                    formatDate,
+                    formatTime
+                };
+            },
+            filters: {
+                capitalize: function(value) {
+                    if (!value) return '';
+                    value = value.toString();
+                    return value.charAt(0).toUpperCase() + value.slice(1);
+                }
+            }
+        }).mount('#app');
+    </script>
+    {% endraw %}
+</body>
+</html>

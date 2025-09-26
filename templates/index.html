@@ -1,0 +1,740 @@
+{% extends "base.html" %}
+
+{% block title %}Lakeside Bistro - Fine Dining with a View{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero-section {
+        background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), 
+                    url("{{ url_for('static', path='/images/hero-bg.jpg') }}") no-repeat center center/cover;
+        color: white;
+        padding: 8rem 0;
+        text-align: center;
+        margin-bottom: 4rem;
+        position: relative;
+    }
+    
+    .hero-content {
+        position: relative;
+        z-index: 1;
+    }
+    
+    .hero-title {
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+    
+    .hero-subtitle {
+        font-size: 1.5rem;
+        margin-bottom: 2rem;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    }
+    
+    .booking-card {
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 10px;
+        padding: 2rem;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        max-width: 500px;
+        margin: 0 auto;
+    }
+    
+    .section-title {
+        position: relative;
+        display: inline-block;
+        margin-bottom: 2.5rem;
+        font-weight: 700;
+        color: #333;
+    }
+    
+    .section-title:after {
+        content: '';
+        position: absolute;
+        width: 50px;
+        height: 3px;
+        background: var(--primary-color);
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+    
+    .feature-card {
+        text-align: center;
+        padding: 2rem 1.5rem;
+        border-radius: 10px;
+        background: white;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        height: 100%;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .feature-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .feature-icon {
+        font-size: 2.5rem;
+        color: var(--primary-color);
+        margin-bottom: 1.5rem;
+    }
+    
+    .menu-card {
+        border: none;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        transition: transform 0.3s ease;
+        margin-bottom: 2rem;
+        height: 100%;
+    }
+    
+    .menu-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .menu-card img {
+        height: 200px;
+        object-fit: cover;
+    }
+    
+    .testimonial-card {
+        background: white;
+        border-radius: 10px;
+        padding: 2rem;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        height: 100%;
+        position: relative;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .testimonial-text {
+        font-style: italic;
+        margin-bottom: 1.5rem;
+        position: relative;
+        padding-left: 1.5rem;
+    }
+    
+    .testimonial-text:before {
+        content: '"\201C"';
+        font-size: 4rem;
+        position: absolute;
+        left: -1rem;
+        top: -1.5rem;
+        color: rgba(13, 110, 253, 0.1);
+        font-family: Georgia, serif;
+    }
+    
+    .testimonial-author {
+        display: flex;
+        align-items: center;
+    }
+    
+    .testimonial-author img {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        margin-right: 1rem;
+        object-fit: cover;
+    }
+    
+    .gallery-item {
+        position: relative;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+    
+    .gallery-item img {
+        width: 100%;
+        height: 250px;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+    
+    .gallery-item:hover img {
+        transform: scale(1.05);
+    }
+    
+    .gallery-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .gallery-item:hover .gallery-overlay {
+        opacity: 1;
+    }
+    
+    .gallery-icon {
+        color: white;
+        font-size: 2rem;
+    }
+    
+    .contact-info {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1.5rem;
+    }
+    
+    .contact-icon {
+        font-size: 1.5rem;
+        color: var(--primary-color);
+        margin-right: 1rem;
+        margin-top: 0.25rem;
+    }
+    
+    .contact-details h5 {
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+    }
+    
+    .social-links {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .social-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #f8f9fa;
+        color: var(--primary-color);
+        transition: all 0.3s ease;
+    }
+    
+    .social-link:hover {
+        background: var(--primary-color);
+        color: white;
+        transform: translateY(-3px);
+    }
+    
+    .message {
+        margin-bottom: 1rem;
+        padding: 0.5rem;
+        border-radius: 5px;
+    }
+    
+    .user-message {
+        background-color: #e3f2fd;
+        text-align: right;
+    }
+    
+    .bot-message {
+        background-color: #f5f5f5;
+    }
+    
+    .typing {
+        font-style: italic;
+        color: #666;
+    }
+    
+    .form-control {
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .btn-primary {
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 2.5rem;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.25rem;
+        }
+        
+        .booking-card {
+            margin: 0 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section with Booking Form -->
+<section class="hero-section">
+    <div class="container">
+        <div class="hero-content">
+            <h1 class="hero-title">Welcome to Lakeside Bistro</h1>
+            <p class="hero-subtitle">Experience fine dining with a breathtaking view of the lake. Our chef prepares exquisite dishes using the freshest local ingredients.</p>
+            <a href="/book" class="btn btn-primary btn-lg mb-4">Book a Table</a>
+            <button class="btn btn-outline-light btn-lg ms-3" id="chatbotToggle">Ask Questions</button>
+        </div>
+    </div>
+</section>
+
+<!-- About Section -->
+<section id="about" class="py-5">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-5 mb-lg-0">
+                <h2 class="section-title">Our Story</h2>
+                <p class="lead">Established in 2010, Lakeside Bistro has been serving exceptional cuisine in a stunning waterfront setting for over a decade.</p>
+                <p>Our passion for food and hospitality is evident in every dish we serve. We source the finest local ingredients to create memorable dining experiences for our guests.</p>
+                <p>Whether you're joining us for a romantic dinner, a family celebration, or a business lunch, our attentive staff will ensure your visit is nothing short of exceptional.</p>
+                <a href="#" class="btn btn-outline-primary mt-3">Learn More</a>
+            </div>
+            <div class="col-lg-6">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <img src="{{ url_for('static', path='/images/restaurant-1.jpg') }}" alt="Restaurant Interior" class="img-fluid rounded shadow">
+                    </div>
+                    <div class="col-6">
+                        <img src="{{ url_for('static', path='/images/restaurant-2.jpg') }}" alt="Dining Area" class="img-fluid rounded shadow mb-3">
+                        <img src="{{ url_for('static', path='/images/restaurant-3.jpg') }}" alt="Bar Area" class="img-fluid rounded shadow">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Why Choose Us</h2>
+            <p class="text-muted">Discover what makes Lakeside Bistro the perfect dining destination</p>
+        </div>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-utensils"></i>
+                    </div>
+                    <h4>Exquisite Cuisine</h4>
+                    <p>Our menu features a variety of dishes prepared with the freshest local ingredients and inspired by global flavors.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-wine-glass-alt"></i>
+                    </div>
+                    <h4>Extensive Wine List</h4>
+                    <p>Pair your meal with a selection from our award-winning wine list, featuring both local and international labels.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-water"></i>
+                    </div>
+                    <h4>Stunning Views</h4>
+                    <p>Enjoy breathtaking views of the lake and surrounding landscape from our spacious dining area and outdoor terrace.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Menu Preview Section -->
+<section id="menu" class="py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Our Menu</h2>
+            <p class="text-muted">A selection of our signature dishes</p>
+        </div>
+        <div class="row">
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card menu-card">
+                    <img src="{{ url_for('static', path='/images/dish-1.jpg') }}" class="card-img-top" alt="Grilled Salmon">
+                    <div class="card-body">
+                        <h5 class="card-title">Grilled Salmon</h5>
+                        <p class="card-text text-muted">Fresh Atlantic salmon with lemon butter sauce, served with seasonal vegetables and roasted potatoes.</p>
+                        <p class="h5 text-primary mb-0">$28.99</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card menu-card">
+                    <img src="{{ url_for('static', path='/images/dish-2.jpg') }}" class="card-img-top" alt="Filet Mignon">
+                    <div class="card-body">
+                        <h5 class="card-title">Filet Mignon</h5>
+                        <p class="card-text text-muted">8oz grass-fed beef tenderloin with red wine reduction, truffle mashed potatoes, and asparagus.</p>
+                        <p class="h5 text-primary mb-0">$42.99</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6 mb-4">
+                <div class="card menu-card">
+                    <img src="{{ url_for('static', path='/images/dish-3.jpg') }}" class="card-img-top" alt="Vegetable Risotto">
+                    <div class="card-body">
+                        <h5 class="card-title">Truffle Risotto</h5>
+                        <p class="card-text text-muted">Creamy arborio rice with wild mushrooms, white truffle oil, and parmesan cheese.</p>
+                        <p class="h5 text-primary mb-0">$24.99</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="text-center mt-4">
+            <a href="#" class="btn btn-outline-primary">View Full Menu</a>
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">What Our Guests Say</h2>
+            <p class="text-muted">Don't just take our word for it</p>
+        </div>
+        <div class="row">
+            <div class="col-lg-4 mb-4">
+                <div class="testimonial-card">
+                    <p class="testimonial-text">The food was absolutely amazing! The view of the lake made our anniversary dinner even more special. Highly recommended!</p>
+                    <div class="testimonial-author">
+                        <img src="https://randomuser.me/api/portraits/women/45.jpg" alt="Sarah Johnson">
+                        <div>
+                            <h6 class="mb-0">Sarah Johnson</h6>
+                            <small class="text-muted">Google Review</small>
+                            <div class="text-warning">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="testimonial-card">
+                    <p class="testimonial-text">Exceptional service and the most delicious food we've had in a long time. The wine pairing was perfect. We'll definitely be back!</p>
+                    <div class="testimonial-author">
+                        <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Michael Chen">
+                        <div>
+                            <h6 class="mb-0">Michael Chen</h6>
+                            <small class="text-muted">TripAdvisor</small>
+                            <div class="text-warning">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-4">
+                <div class="testimonial-card">
+                    <p class="testimonial-text">The atmosphere is wonderful, the staff is friendly, and the food is out of this world. The perfect spot for a special occasion.</p>
+                    <div class="testimonial-author">
+                        <img src="https://randomuser.me/api/portraits/women/68.jpg" alt="Emily Rodriguez">
+                        <div>
+                            <h6 class="mb-0">Emily Rodriguez</h6>
+                            <small class="text-muted">Yelp</small>
+                            <div class="text-warning">
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star"></i>
+                                <i class="fas fa-star-half-alt"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Gallery Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Gallery</h2>
+            <p class="text-muted">A glimpse of our restaurant and dishes</p>
+        </div>
+        <div class="row">
+            <div class="col-md-4 col-6 mb-4">
+                <div class="gallery-item">
+                    <img src="{{ url_for('static', path='/images/gallery-1.jpg') }}" alt="Restaurant Interior">
+                    <div class="gallery-overlay">
+                        <i class="fas fa-search-plus gallery-icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-6 mb-4">
+                <div class="gallery-item">
+                    <img src="{{ url_for('static', path='/images/gallery-2.jpg') }}" alt="Dining Area">
+                    <div class="gallery-overlay">
+                        <i class="fas fa-search-plus gallery-icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-6 mb-4">
+                <div class="gallery-item">
+                    <img src="{{ url_for('static', path='/images/gallery-3.jpg') }}" alt="Bar Area">
+                    <div class="gallery-overlay">
+                        <i class="fas fa-search-plus gallery-icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-6 mb-4">
+                <div class="gallery-item">
+                    <img src="{{ url_for('static', path='/images/gallery-4.jpg') }}" alt="Outdoor Seating">
+                    <div class="gallery-overlay">
+                        <i class="fas fa-search-plus gallery-icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-6 mb-4">
+                <div class="gallery-item">
+                    <img src="{{ url_for('static', path='/images/gallery-5.jpg') }}" alt="Chef's Special">
+                    <div class="gallery-overlay">
+                        <i class="fas fa-search-plus gallery-icon"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-6 mb-4">
+                <div class="gallery-item">
+                    <img src="{{ url_for('static', path='/images/gallery-6.jpg') }}" alt="Dessert Selection">
+                    <div class="gallery-overlay">
+                        <i class="fas fa-search-plus gallery-icon"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Contact Section -->
+<section id="contact" class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="section-title">Contact Us</h2>
+            <p class="text-muted">We'd love to hear from you</p>
+        </div>
+        <div class="row">
+            <div class="col-lg-5 mb-5 mb-lg-0">
+                <h4 class="mb-4">Get In Touch</h4>
+                <div class="contact-info">
+                    <div class="contact-icon">
+                        <i class="fas fa-map-marker-alt"></i>
+                    </div>
+                    <div class="contact-details">
+                        <h5>Our Location</h5>
+                        <p class="mb-0">123 Lakeview Drive, Lakeside, CA 92040</p>
+                    </div>
+                </div>
+                <div class="contact-info">
+                    <div class="contact-icon">
+                        <i class="fas fa-phone-alt"></i>
+                    </div>
+                    <div class="contact-details">
+                        <h5>Phone Number</h5>
+                        <p class="mb-0">+1 (555) 123-4567</p>
+                    </div>
+                </div>
+                <div class="contact-info">
+                    <div class="contact-icon">
+                        <i class="fas fa-envelope"></i>
+                    </div>
+                    <div class="contact-details">
+                        <h5>Email Address</h5>
+                        <p class="mb-0">info@lakesidebistro.com</p>
+                    </div>
+                </div>
+                <div class="contact-info">
+                    <div class="contact-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="contact-details">
+                        <h5>Opening Hours</h5>
+                        <p class="mb-0">Monday - Friday: 11:00 AM - 10:00 PM<br>
+                        Saturday - Sunday: 10:00 AM - 11:00 PM</p>
+                    </div>
+                </div>
+                <div class="social-links">
+                    <a href="#" class="social-link"><i class="fab fa-facebook-f"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="social-link"><i class="fab fa-yelp"></i></a>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <h4 class="mb-4">Send Us a Message</h4>
+                <form>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" placeholder="Your Name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="email" class="form-control" placeholder="Your Email" required>
+                        </div>
+                    </div>
+                    <input type="text" class="form-control" placeholder="Subject">
+                    <textarea class="form-control" rows="5" placeholder="Your Message" required></textarea>
+                    <button type="submit" class="btn btn-primary">Send Message</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Map Section -->
+<div class="map-container">
+    <iframe 
+        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d107361.56140024174!2d-117.3111604!3d32.8383832!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x80dc06b0ae9bea1d%3A0x2f6a1a3c1e1a1a1a1!2sLake%20Hodges%2C%20California%2C%20USA!5e0!3m2!1sen!2sus!4v1620000000000!5m2!1sen!2sus" 
+        width="100%" 
+        height="450" 
+        style="border:0;" 
+        allowfullscreen="" 
+        loading="lazy">
+    </iframe>
+</div>
+
+<!-- Chatbot Modal -->
+<div class="modal fade" id="chatbotModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Restaurant Assistant</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="chatbotMessages" class="chat-messages" style="height: 400px; overflow-y: auto; border: 1px solid #dee2e6; padding: 1rem; margin-bottom: 1rem; border-radius: 5px;">
+                    <div class="message bot-message">
+                        <strong>Assistant:</strong> Hello! I'm here to help you with any questions about our restaurant. What would you like to know?
+                    </div>
+                </div>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="chatbotInput" placeholder="Ask me anything about our restaurant...">
+                    <button class="btn btn-primary" type="button" id="chatbotSend">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize image gallery lightbox
+    document.addEventListener('DOMContentLoaded', function() {
+        // This would be replaced with a proper lightbox implementation
+        const galleryItems = document.querySelectorAll('.gallery-item');
+        
+        galleryItems.forEach(item => {
+            item.addEventListener('click', function() {
+                // In a real implementation, this would open a lightbox with the full-size image
+                const imgSrc = this.querySelector('img').src;
+                console.log('Opening image:', imgSrc);
+                // lightbox.open(imgSrc);
+            });
+        });
+        
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80, // Account for fixed header
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+        
+        // Chatbot functionality
+        const chatbotToggle = document.getElementById('chatbotToggle');
+        const chatbotModal = new bootstrap.Modal(document.getElementById('chatbotModal'));
+        const chatbotInput = document.getElementById('chatbotInput');
+        const chatbotSend = document.getElementById('chatbotSend');
+        const chatbotMessages = document.getElementById('chatbotMessages');
+        
+        chatbotToggle.addEventListener('click', function() {
+            chatbotModal.show();
+        });
+        
+        chatbotSend.addEventListener('click', sendMessage);
+        chatbotInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        function sendMessage() {
+            const message = chatbotInput.value.trim();
+            if (!message) return;
+            
+            // Add user message to chat
+            addMessage(message, 'user');
+            chatbotInput.value = '';
+            
+            // Show typing indicator
+            const typingIndicator = addMessage('Assistant is typing...', 'bot', true);
+            
+            // Send to API
+            fetch('/api/chatbot', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ question: message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Remove typing indicator
+                typingIndicator.remove();
+                
+                // Add bot response
+                addMessage(data.answer, 'bot');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                typingIndicator.remove();
+                addMessage('Sorry, I encountered an error. Please try again.', 'bot');
+            });
+        }
+        
+        function addMessage(message, sender, isTyping = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}-message ${isTyping ? 'typing' : ''}`;
+            messageDiv.innerHTML = `<strong>${sender === 'user' ? 'You' : 'Assistant'}:</strong> ${message}`;
+            
+            chatbotMessages.appendChild(messageDiv);
+            chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+            
+            return messageDiv;
+        }
+    });
+</script>
+{% endblock %}

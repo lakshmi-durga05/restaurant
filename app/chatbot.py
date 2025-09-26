@@ -7,6 +7,7 @@ from datetime import datetime
 from . import schemas, reservation_service
 from .config import settings
 from . import rag
+from . import agents
 from .llm import ask_ollama
 from . import notify
 
@@ -47,12 +48,21 @@ def get_or_create_session(session_id: Optional[str]) -> ChatSession:
 
 def _normalize_view(text: str) -> Optional[str]:
     t = text.lower().strip()
+    # Strip common suffix words without losing the core token
+    for suffix in (" view", " section", " area"):
+        if t.endswith(suffix):
+            t = t[: -len(suffix)]
+            t = t.strip()
+    # Direct matches
     if t in ("window", "garden", "private", "lake"):
         return t
+    # If the phrase contains one of the known view words, pick it
+    for v in ("window", "garden", "private", "lake"):
+        if v in t.split() or v in t:
+            return v
+    # Explicit no-preference
     if t in ("no", "none", "any", "no preference"):
         return None
-    if t.endswith(" view"):
-        return _normalize_view(t.replace(" view", ""))
     return None
 
 
@@ -71,6 +81,26 @@ def _parse_booking_info(sess: ChatSession, text: str):
     import re
     t = text.strip()
     lower = t.lower()
+    # If the message is quoted and/or prefixed with 'book', normalize it
+    # Examples: book 'Priya Shah, 2025-09-30 19:30, party 4, window, priyanka@example.com, +14155552671'
+    t_norm = t
+    if lower.startswith("book ") and not lower.startswith("book table"):
+        t_norm = t[5:].strip()  # drop 'book '
+    # remove surrounding quotes if present
+    if (t_norm.startswith("'") and t_norm.endswith("'")) or (t_norm.startswith('"') and t_norm.endswith('"')):
+        t_norm = t_norm[1:-1].strip()
+    # CSV-style quick parse: Name, YYYY-MM-DD HH:MM, party N, view, email, phone
+    try:
+        parts_csv = [p.strip() for p in t_norm.split(',')]
+        if len(parts_csv) >= 2 and "customer_name" not in sess.data:
+            first = parts_csv[0]
+            # Likely a full name if has at least one space and letters, and not an email or date/time
+            import re as _re
+            if ("@" not in first) and (_re.search(r"[A-Za-z]", first)) and ("-" not in first or not _re.search(r"\d{4}-\d{2}-\d{2}", first)):
+                sess.data["customer_name"] = first.title()
+        # If we have 2nd token like date/time, allow later regex to pick it up
+    except Exception:
+        pass
 
     # Email
     if "@" in t and "customer_email" not in sess.data:
@@ -118,9 +148,15 @@ def _parse_booking_info(sess: ChatSession, text: str):
                     hr = 0
                 sess.data["time"] = f"{hr:02d}:{minute:02d}"
 
-    # Party size (look for patterns: for 4, party 4, 4 people, table 4 members)
+    # Party size (look for patterns: 'for 4', 'party 4', '4 people', '10 seats')
     if "party_size" not in sess.data:
-        m = re.search(r"(?:for|party|people|ppl|members|table)\s*(\d{1,2})", lower)
+        # Prioritize explicit people/seats keywords
+        m = re.search(r"\b(\d{1,2})\s*(?:people|ppl|members|seats)\b", lower)
+        if not m:
+            m = re.search(r"\bparty\s*(\d{1,2})(?!\d)\b", lower)
+        if not m:
+            # Safe 'for <n>' that won't capture the year of a date like 'for 2025-09-26'
+            m = re.search(r"\bfor\s*(\d{1,2})(?!\d)\b", lower)
         if m:
             try:
                 sess.data["party_size"] = int(m.group(1))
@@ -132,9 +168,8 @@ def _parse_booking_info(sess: ChatSession, text: str):
             if m2:
                 sess.data["party_size"] = int(m2.group(0))
 
-    # View preferences
-    # View preferences; also support phrases like 'lake view'
-    v = _normalize_view(lower.replace(' view', ''))
+    # View preferences; support phrases like 'lake view', 'garden view section', etc.
+    v = _normalize_view(lower)
     if v is not None:
         sess.data["preferred_view"] = v
 
@@ -192,13 +227,15 @@ def _parse_booking_info(sess: ChatSession, text: str):
 
 
 def _missing_fields(sess: ChatSession) -> list:
-    # Require: name, party_size, date, time, and at least one contact (email or phone)
+    # Require: name, party_size, date, time, and both contacts (email and phone) to satisfy API schema
     missing = []
     for key in ["customer_name", "party_size", "date", "time"]:
         if key not in sess.data:
             missing.append(key)
-    if ("customer_email" not in sess.data) and ("customer_phone" not in sess.data):
-        missing.append("contact")
+    if "customer_email" not in sess.data:
+        missing.append("customer_email")
+    if "customer_phone" not in sess.data:
+        missing.append("customer_phone")
     return missing
 
 
@@ -441,7 +478,11 @@ def handle_message(db, session_id: Optional[str], msg: str, locale: Optional[str
     if any(k in lower for k in ["speciality", "specialty", "special dish", "special dishes", "specials", "signature dishes", "chef special", "speciality of hotel", "specialty of hotel"]):
         menu = reservation_service.get_menu(db)
         specials = [m for m in menu if getattr(m, 'is_special', False)]
-        text = _format_menu_items(specials[:10]) if specials else "No special dishes today."
+        if specials:
+            lines = [f"- **{m.name}** – ${getattr(m,'price',0):.2f}" for m in specials[:10]]
+            text = "\n".join(lines)
+        else:
+            text = "No special dishes today."
         hotel_features = [
             "Lakeside candlelight dinners",
             "Private gazebo seating",
@@ -499,8 +540,16 @@ def handle_message(db, session_id: Optional[str], msg: str, locale: Optional[str
                             t = r.reservation_time.strftime("%Y-%m-%d %H:%M") if r.reservation_time else "--"
                             lines.append(f"- {r.customer_name} (party {r.party_size}) at {t}, table {r.table_id}")
                         booked_block = "\n".join(lines)
-                        return reply(f"View: {v}\nTotal: {stats['total']}\nBooked: {stats['booked']}\nAvailable: {stats['available']}\nBooked details (±2h around {target_dt.strftime('%Y-%m-%d %H:%M')}):\n{booked_block}")
-                    return reply(f"View: {v}\nTotal: {stats['total']}\nBooked: {stats['booked']}\nAvailable: {stats['available']}\nNo confirmed bookings in this ±2h window.")
+                        img_url = f"/api/availability/image?view={v}&at={target_dt.isoformat()}"
+                        return reply(
+                            f"View: {v}\nTotal: {stats['total']}\nBooked: {stats['booked']}\nAvailable: {stats['available']}\nBooked details (±2h around {target_dt.strftime('%Y-%m-%d %H:%M')}):\n{booked_block}",
+                            extra={"image_url": img_url}
+                        )
+                    img_url = f"/api/availability/image?view={v}&at={target_dt.isoformat()}"
+                    return reply(
+                        f"View: {v}\nTotal: {stats['total']}\nBooked: {stats['booked']}\nAvailable: {stats['available']}\nNo confirmed bookings in this ±2h window.",
+                        extra={"image_url": img_url}
+                    )
                 else:
                     # If a date is known but no time, show stats for that date (00:00–24:00 UTC)
                     if "date" in sess.data and "time" not in sess.data:
@@ -520,8 +569,27 @@ def handle_message(db, session_id: Optional[str], msg: str, locale: Optional[str
                             t = r.reservation_time.strftime("%Y-%m-%d %H:%M") if r.reservation_time else "--"
                             lines.append(f"- {r.customer_name} (party {r.party_size}) at {t}, table {r.table_id}")
                         booked_block = "\n".join(lines)
-                        return reply(f"View: {v}\nTotal: {stats['total']}\nBooked: {stats['booked']}\nAvailable: {stats['available']}\nBooked details:\n{booked_block}")
-                    return reply(f"View: {v}\nTotal: {stats['total']}\nBooked: {stats['booked']}\nAvailable: {stats['available']}\nNo confirmed bookings for that period.")
+                        # Use date-only if time not specified in session
+                        try:
+                            at_iso = day.isoformat()
+                        except Exception:
+                            from datetime import datetime as _dt
+                            at_iso = _dt.utcnow().isoformat()
+                        img_url = f"/api/availability/image?view={v}&at={at_iso}"
+                        return reply(
+                            f"View: {v}\nTotal: {stats['total']}\nBooked: {stats['booked']}\nAvailable: {stats['available']}\nBooked details:\n{booked_block}",
+                            extra={"image_url": img_url}
+                        )
+                    try:
+                        at_iso = day.isoformat()
+                    except Exception:
+                        from datetime import datetime as _dt
+                        at_iso = _dt.utcnow().isoformat()
+                    img_url = f"/api/availability/image?view={v}&at={at_iso}"
+                    return reply(
+                        f"View: {v}\nTotal: {stats['total']}\nBooked: {stats['booked']}\nAvailable: {stats['available']}\nNo confirmed bookings for that period.",
+                        extra={"image_url": img_url}
+                    )
 
     # Summary across all views (no view specified)
     if ("available" in lower and ("tables" in lower or "table" in lower)) and not any(v in lower for v in VIEWS):
@@ -543,7 +611,7 @@ def handle_message(db, session_id: Optional[str], msg: str, locale: Optional[str
             for v in views:
                 s = reservation_service.view_stats(db, v)
                 lines.append(f"- {v}: total {s['total']}, booked {s['booked']}, available {s['available']}")
-            return reply("Availability by view:\n" + "\n".join(lines))
+            return reply("Availability by view:\n" + "\n".join(lines), extra={"image_url": "/assets/hotel.jpg"})
 
     # If user just saw the menu/specialties and replies yes/no
     if sess.data.get("_awaiting_order_choice"):
@@ -556,7 +624,7 @@ def handle_message(db, session_id: Optional[str], msg: str, locale: Optional[str
             return reply("No problem. How else can I help you?")
 
     # Number of unique tables booked today
-    if ("tables" in lower and "booked" in lower and "today" in lower):
+    if ("tables" in lower and "booked" in lower and "today" in lower) or ("how many booked" in lower and "today" in lower):
         cnt = reservation_service.tables_booked_today_count(db)
         return reply(f"Unique tables booked today: {cnt}")
 
@@ -581,12 +649,44 @@ def handle_message(db, session_id: Optional[str], msg: str, locale: Optional[str
         return reply(msg_total)
 
     # Working hours / timings
-    if any(k in lower for k in ["working hours", "timings", "opening hours", "open hours", "when do you open", "when do you close", "closing time", "opening time", "hours of operation"]):
-        return reply("Lake Serinity is open daily from 12:00 to 23:00. Last seating is at 22:00. Lunch: 12:00–15:30, Dinner: 18:30–23:00.")
+    if any(k in lower for k in ["working hours", "timings", "opening hours", "open hours", "when do you open", "when do you close", "closing time", "opening time", "hours of operation", "hours", "timing"]):
+        return reply("Lake Serinity is open daily from 11:00 AM to 11:00 PM. Last seating at 10:00 PM.\nLunch: 12:00 PM – 3:30 PM\nDinner: 6:30 PM – 11:00 PM")
 
     # Hotel address / location
     if any(k in lower for k in ["address", "location", "where are you", "where is the hotel", "where is lake serinity", "directions", "how to reach"]):
         return reply("Lake Serinity is located at:\n123 Serene Lake Drive, Lakeside District, Bangalore, Karnataka 560001, India\n\nFor directions, you can search 'Lake Serinity Restaurant' on Google Maps.")
+
+    # Hotel contact details
+    if any(k in lower for k in ["contact details", "phone number", "contact", "email id", "email address", "how to contact", "call you"]):
+        return reply(
+            "Contact details:\nPhone: +91 98765 43210\nEmail: reservations@lake-serinity.example\nAddress: 123 Serene Lake Drive, Lakeside District, Bangalore 560001\nHours: 12:00–23:00"
+        )
+
+    # Date/romantic suggestions (concise; include dish pairing)
+    if any(k in lower for k in ["romantic", "date", "take someone on date", "propose", "candlelight"]):
+        # Fetch a couple of house specials for a short pairing suggestion
+        try:
+            menu = reservation_service.get_menu(db)
+            specials = [m for m in menu if getattr(m, 'is_special', False)]
+            top = [m.name for m in specials[:2]] if specials else []
+        except Exception:
+            top = []
+        dish_line = f" Try: {top[0]} with a light wine." if top else ""
+        return reply(
+            "For a romantic date, choose Lake view near sunset for a beautiful ambiance; Private area if you prefer privacy; Window as a cozy alternative." + dish_line
+        )
+
+    # If user asks for a 'special dish' explicitly, give 1-2 tailored items rather than full list
+    if any(k in lower for k in ["special dish", "recommend a dish", "what to order", "signature dish"]):
+        try:
+            menu = reservation_service.get_menu(db)
+            specials = [m for m in menu if getattr(m, 'is_special', False)]
+            names = [m.name for m in specials[:2]] if specials else []
+        except Exception:
+            names = []
+        if names:
+            return reply(f"I'd suggest {names[0]}{(' and ' + names[1]) if len(names) > 1 else ''} — perfect for a date. Would you like to pre-order?")
+        return reply("Our chef specials change often; I'd suggest the catch of the day. Would you like to see the menu?")
 
     # Allow quick view change: "view garden" or "garden view"
     if lower.startswith("view "):
@@ -658,12 +758,27 @@ def handle_message(db, session_id: Optional[str], msg: str, locale: Optional[str
         # Provide suggestions if not available
         suggestion = response.suggestions
         if suggestion and (suggestion.tables or suggestion.other_view_suggestions):
+            # Persist suggested tables for quick 'book combo'
+            if suggestion.tables:
+                sess.data["_suggested_table_ids"] = [int(t.id) for t in suggestion.tables]
+                try:
+                    sess.data["_suggested_dt"] = dt.isoformat()
+                except Exception:
+                    pass
+            elif suggestion.other_view_suggestions:
+                sess.data["_suggested_table_ids"] = [int(t.id) for t in suggestion.other_view_suggestions]
             tables_text = ", ".join([f"Table {t.id} for {t.capacity} ({t.view})" for t in (suggestion.tables or [])])
             other_text = ", ".join([f"Table {t.id} for {t.capacity} ({t.view})" for t in (suggestion.other_view_suggestions or [])])
-            msg_text = response.message
+            msg_lines = [response.message]
+            if tables_text:
+                msg_lines.append(f"Suggested in preferred view: {tables_text}")
             if other_text:
-                msg_text += f"\nOther views: {other_text}"
-            return reply(f"{msg_text}\nYou can book a specific one with 'book <table_id>'.")
+                msg_lines.append(f"Other views: {other_text}")
+            extra_hint = "You can book a specific one with 'book <table_id>'."
+            if suggestion.tables and not suggestion.is_exact_match and len(suggestion.tables) >= 2:
+                extra_hint += " Reply with 'book combo' to reserve the suggested tables together for your party."
+            msg_lines.append(extra_hint)
+            return reply("\n".join(msg_lines))
         return reply("Sorry, nothing is available for those exact details. Try a different time or say 'available tables now'.")
 
     # If information is incomplete, respond gently
@@ -683,17 +798,18 @@ def handle_message(db, session_id: Optional[str], msg: str, locale: Optional[str
             "party_size": "party size",
             "date": "date (YYYY-MM-DD)",
             "time": "time (HH:MM)",
-            "contact": "email or phone",
+            "customer_email": "email",
+            "customer_phone": "phone",
         }
         need = ", ".join([pretty[m] for m in missing])
         return reply(f"Please provide: {need}. Example: 'Priya Shah, 2025-09-30 19:30, party 4, window, priyanka@example.com, +14155552671'.")
 
     if sess.state == "ask_email" and sess.state != "ordering":
         # Defer to customer-led guidance
-        return reply("Please provide details in one message. Example: 'Priya Shah, 2025-09-30 19:30, party 4, window, priyanka@example.com, +14155552671'.")
+        return reply("Please provide details in one message (include both email and phone). Example: 'Priya Shah, 2025-09-30 19:30, party 4, window, priyanka@example.com, +14155552671'.")
 
     if sess.state == "ask_phone" and sess.state != "ordering":
-        return reply("Share remaining details in one go: 'Name, YYYY-MM-DD HH:MM, party N, view, email, phone'.")
+        return reply("Share remaining details in one go (include both email and phone): 'Name, YYYY-MM-DD HH:MM, party N, view, email, phone'.")
 
     if sess.state == "ask_party" and sess.state != "ordering":
         return reply("Share remaining details in one go: 'Name, YYYY-MM-DD HH:MM, party N, view, email, phone'.")
@@ -715,6 +831,11 @@ def handle_message(db, session_id: Optional[str], msg: str, locale: Optional[str
         ans = rag.answer(db, msg)
         if ans:
             return reply(ans)
+    # Agentic AI fallback (optional)
+    if settings.use_agents:
+        a = agents.answer(db, msg)
+        if a:
+            return reply(a)
 
     # Default friendly response
     return reply("I can help with bookings, availability, menu, and more. Try 'help' to see examples.")
@@ -739,7 +860,10 @@ def handle_message(db, session_id: Optional[str], msg: str, locale: Optional[str
                 msg_text = response.message
                 if other_text:
                     msg_text += f"\nOther views: {other_text}"
-                return reply(f"{msg_text}\nReply with 'book <table_id>' to confirm a specific table or 'view <name>' to change view.")
+                # Persist for combo booking
+                if suggestion.tables:
+                    sess.data["_suggested_table_ids"] = [int(t.id) for t in suggestion.tables]
+                return reply(f"{msg_text}\nReply with 'book <table_id>' to confirm a specific table or 'book combo' to reserve multiple tables, or 'view <name>' to change view.")
             sess.state = "start"
             sess.data.clear()
             return reply("Sorry, nothing is available. Try a different time or party size.")
@@ -829,8 +953,10 @@ def handle_message(db, session_id: Optional[str], msg: str, locale: Optional[str
         suggestion = response.suggestions
         if suggestion and suggestion.tables:
             tables_text = ", ".join([f"Table {t.id} for {t.capacity} ({t.view})" for t in suggestion.tables])
+            # Store for combo flow
+            sess.data["_suggested_table_ids"] = [int(t.id) for t in suggestion.tables]
             return reply(
-                f"{response.message}\nSuggested: {tables_text}.\nReply with 'book <table_id>' to confirm a specific table.",
+                f"{response.message}\nSuggested: {tables_text}.\nReply with 'book <table_id>' or 'book combo' to reserve suggested tables.",
                 extra={"suggestions": [t.id for t in suggestion.tables]},
             )
         else:
@@ -841,10 +967,41 @@ def handle_message(db, session_id: Optional[str], msg: str, locale: Optional[str
     # Quick command: book <table_id>
     if msg.lower().startswith("book "):
         parts = msg.split()
+        # 'book combo' -> reserve suggested split tables
+        if len(parts) == 2 and parts[1].lower() == "combo":
+            ids = sess.data.get("_suggested_table_ids") or []
+            if not ids:
+                return reply("I don't have a suggested combination yet. Ask for availability first.")
+            required = ["customer_name", "party_size", "date", "time"]
+            has_both_contacts = ("customer_email" in sess.data) and ("customer_phone" in sess.data)
+            if (not all(k in sess.data for k in required)) or (not has_both_contacts):
+                return reply("Please complete details first (name, party, date, time, email and phone). Then say 'book combo'.")
+            dt = datetime.fromisoformat(f"{sess.data['date']}T{sess.data['time']}:00")
+            payload = {
+                "customer_name": sess.data["customer_name"],
+                "customer_email": sess.data["customer_email"],
+                "customer_phone": sess.data["customer_phone"],
+                "reservation_time": dt.isoformat(),
+                "party_size": int(sess.data["party_size"]),
+                "preferred_view": sess.data.get("preferred_view"),
+                "table_ids": list(ids),
+            }
+            try:
+                out = reservation_service.create_combo_reservations(db, payload)
+                if out and out.get("success"):
+                    sess.state = "start"
+                    sess.data.clear()
+                    return reply(out.get("message") or "Reserved the suggested tables for your party.", done=True)
+                return reply(out.get("message") if out else "Unable to create combo reservation.")
+            except Exception as e:
+                return reply(f"Couldn't create combo reservation: {e}")
+
         if len(parts) == 2 and parts[1].isdigit():
             table_id = int(parts[1])
-            if not all(k in sess.data for k in ("customer_name", "customer_email", "customer_phone", "party_size", "date", "time")):
-                return reply("Please complete the details first (name, email, phone, party, date and time).")
+            required = ["customer_name", "party_size", "date", "time"]
+            has_both_contacts = ("customer_email" in sess.data) and ("customer_phone" in sess.data)
+            if (not all(k in sess.data for k in required)) or (not has_both_contacts):
+                return reply("Please complete the details first (name, party, date, time, email and phone).")
             dt = datetime.fromisoformat(f"{sess.data['date']}T{sess.data['time']}:00")
             reservation = schemas.ReservationCreate(
                 customer_name=sess.data["customer_name"],

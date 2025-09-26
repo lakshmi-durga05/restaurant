@@ -1,435 +1,580 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Restaurant Table Booking</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        .fade-enter-active, .fade-leave-active {
-            transition: opacity 0.3s;
-        }
-        .fade-enter, .fade-leave-to {
-            opacity: 0;
-        }
-        .table-card {
-            transition: all 0.3s ease;
-        }
-        .table-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    {% raw %}
-    <div class="min-h-screen" id="app">
-        <!-- Header -->
-        <header class="bg-indigo-600 text-white shadow-lg">
-            <div class="container mx-auto px-4 py-6">
-                <div class="flex justify-between items-center">
-                    <h1 class="text-3xl font-bold">Gourmet Delights</h1>
-                    <nav>
-                        <ul class="flex space-x-6">
-                            <li><a href="#" class="hover:text-indigo-200">Home</a></li>
-                            <li><a href="#" class="hover:text-indigo-200">Menu</a></li>
-                            <li><a href="#" class="hover:text-indigo-200">About</a></li>
-                            <li><a href="#" class="hover:text-indigo-200">Contact</a></li>
-                        </ul>
-                    </nav>
-                </div>
-            </div>
-        </header>
+{% extends "base.html" %}
 
-        <!-- Main Content -->
-        <main class="container mx-auto px-4 py-8">
-            <div class="max-w-4xl mx-auto">
-                <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">Book a Table</h2>
-                
-                <!-- Booking Form -->
-                <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-                    <form @submit.prevent="checkAvailability" class="space-y-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                                <input v-model="formData.name" type="text" id="name" required
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+{% block title %}Book a Table - Lakeside Bistro{% endblock %}
+
+{% block extra_css %}
+<style>
+    .booking-form {
+        background: #fff;
+        padding: 2rem;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    }
+    .section-card {
+        border: 2px solid #e9ecef;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .section-card:hover {
+        border-color: #0d6efd;
+        transform: translateY(-5px);
+    }
+    .section-card.selected {
+        border-color: #0d6efd;
+        background-color: #f8f9fa;
+    }
+    .time-slot {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        margin: 0.25rem;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .time-slot:hover {
+        background-color: #f8f9fa;
+    }
+    .time-slot.selected {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
+    .section-image {
+        height: 200px;
+        object-fit: cover;
+        border-radius: 5px;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="text-center mb-5">
+                <h1 class="display-5 fw-bold">Book a Table</h1>
+                <p class="lead text-muted">Reserve your table at Lakeside Bistro</p>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress mb-5" style="height: 8px;">
+                <div class="progress-bar" role="progressbar" style="width: 33%;" id="progressBar"></div>
+            </div>
+
+            <!-- Step 1: Select Section -->
+            <div class="booking-form mb-4" id="step1">
+                <h3 class="mb-4">1. Select Your Preferred Seating</h3>
+                <div class="row">
+                    <!-- Lake View -->
+                    <div class="col-md-6 mb-4">
+                        <div class="section-card" data-section="Lake View">
+                            <img src="{{ url_for('static', path='/res.pic.jpg') }}" alt="Lake View" class="img-fluid section-image">
+                            <h4>Lake View</h4>
+                            <p class="text-muted">Enjoy a beautiful view of the lake while you dine. Tables 10-15.</p>
+                            <div class="d-flex justify-content-between">
+                                <span class="badge bg-primary">2-12 people</span>
+                                <span class="text-muted">Highest Priority</span>
                             </div>
-                            <div>
-                                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                <input v-model="formData.email" type="email" id="email" required
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                            </div>
-                            <div>
-                                <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                                <input v-model="formData.phone" type="tel" id="phone" required
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                            </div>
-                            <div>
-                                <label for="partySize" class="block text-sm font-medium text-gray-700 mb-1">Party Size</label>
-                                <select v-model.number="formData.partySize" id="partySize" required
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option v-for="n in 20" :key="n" :value="n">{{ n }} {{ n === 1 ? 'person' : 'people' }}</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                                <input v-model="formData.date" type="date" id="date" required
-                                    :min="today"
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                            </div>
-                            <div>
-                                <label for="time" class="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                                <select v-model="formData.time" id="time" required
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option v-for="time in availableTimes" :key="time" :value="time">{{ time }}</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="view" class="block text-sm font-medium text-gray-700 mb-1">Preferred View</label>
-                                <select v-model="formData.preferredView" id="view"
-                                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                    <option value="">No preference</option>
-                                    <option value="window">Window View</option>
-                                    <option value="garden">Garden View</option>
-                                    <option value="private">Private Room</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <label for="specialRequests" class="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
-                            <textarea v-model="formData.specialRequests" id="specialRequests" rows="3"
-                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-                        </div>
-                        
-                        <div class="flex justify-end">
-                            <button type="submit" 
-                                class="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                                :disabled="isLoading">
-                                <span v-if="!isLoading">Check Availability</span>
-                                <span v-else>
-                                    <i class="fas fa-spinner fa-spin mr-2"></i> Checking...
-                                </span>
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                
-                <!-- Loading State -->
-                <div v-if="isLoading" class="text-center py-8">
-                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600 mb-4"></div>
-                    <p class="text-gray-600">Finding the best tables for you...</p>
-                </div>
-                
-                <!-- Error Message -->
-                <div v-if="error" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-8" role="alert">
-                    <p class="font-bold">Error</p>
-                    <p>{{ error }}</p>
-                </div>
-                
-                <!-- Table Suggestions -->
-                <div v-if="showSuggestions" class="mt-8">
-                    <h3 class="text-xl font-semibold text-gray-800 mb-4">{{ suggestionMessage }}</h3>
-                    
-                    <div v-if="suggestedTables.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        <div v-for="(table, index) in suggestedTables" :key="index" 
-                             class="bg-white rounded-lg shadow-md overflow-hidden table-card">
-                            <div class="p-6">
-                                <div class="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h4 class="text-lg font-semibold text-gray-800">Table for {{ table.capacity }}</h4>
-                                        <p class="text-sm text-gray-600">{{ table.view | capitalize }} View</p>
-                                    </div>
-                                    <span class="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                        Available
-                                    </span>
-                                </div>
-                                
-                                <div class="mb-4">
-                                    <p class="text-sm text-gray-600 mb-2">Features:</p>
-                                    <div class="flex flex-wrap gap-2">
-                                        <span v-for="(feature, i) in table.features" :key="i"
-                                              class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
-                                            {{ feature.name }}
-                                        </span>
-                                    </div>
-                                </div>
-                                
-                                <button @click="confirmBooking(table.id)"
-                                    class="w-full mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                                    Book This Table
-                                </button>
+                            <div class="mt-2">
+                                <small class="text-muted">2×2 seaters, 2×4 seaters, 2×12 seaters</small>
                             </div>
                         </div>
                     </div>
                     
-                    <div v-else class="text-center py-8 bg-yellow-50 rounded-lg">
-                        <i class="fas fa-info-circle text-yellow-500 text-4xl mb-4"></i>
-                        <p class="text-yellow-700">No tables available for the selected criteria. Please try a different time or party size.</p>
+                    <!-- Garden View -->
+                    <div class="col-md-6 mb-4">
+                        <div class="section-card" data-section="Garden View">
+                            <img src="{{ url_for('static', path='/res.pic.jpg') }}" alt="Garden View" class="img-fluid section-image">
+                            <h4>Garden View</h4>
+                            <p class="text-muted">Relax in our beautiful garden setting. Tables 16-21.</p>
+                            <div class="d-flex justify-content-between">
+                                <span class="badge bg-primary">2-12 people</span>
+                                <span class="text-muted">Second Priority</span>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">2×2 seaters, 2×4 seaters, 2×12 seaters</small>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                
-                <!-- Booking Confirmation -->
-                <div v-if="bookingConfirmed" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                    <div class="bg-white rounded-lg p-8 max-w-md w-full">
-                        <div class="text-center">
-                            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100">
-                                <i class="fas fa-check text-green-600 text-xl"></i>
+                    
+                    <!-- Indoors -->
+                    <div class="col-md-6 mb-4">
+                        <div class="section-card" data-section="Indoors">
+                            <img src="{{ url_for('static', path='/res.pic.jpg') }}" alt="Indoor Seating" class="img-fluid section-image">
+                            <h4>Indoor Seating</h4>
+                            <p class="text-muted">Comfortable seating in our climate-controlled dining area. Tables 1-9.</p>
+                            <div class="d-flex justify-content-between">
+                                <span class="badge bg-primary">2-12 people</span>
+                                <span class="text-muted">Third Priority</span>
                             </div>
-                            <h3 class="mt-3 text-lg font-medium text-gray-900">Booking Confirmed!</h3>
-                            <div class="mt-4 text-sm text-gray-500">
-                                <p class="mb-2">Your reservation has been confirmed for:</p>
-                                <p class="font-medium">{{ formatDate(bookingDetails.reservation_time) }} at {{ formatTime(bookingDetails.reservation_time) }}</p>
-                                <p class="mt-2">Table for {{ bookingDetails.party_size }}</p>
-                                <p class="mt-4">A confirmation has been sent to {{ bookingDetails.customer_email }}</p>
+                            <div class="mt-2">
+                                <small class="text-muted">4×2 seaters, 2×4 seaters, 1×12 seater</small>
                             </div>
-                            <div class="mt-6">
-                                <button @click="resetForm"
-                                    class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
-                                    Make Another Reservation
-                                </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Private Area -->
+                    <div class="col-md-6 mb-4">
+                        <div class="section-card" data-section="Private Area">
+                            <img src="{{ url_for('static', path='/res.pic.jpg') }}" alt="Private Area" class="img-fluid section-image">
+                            <h4>Private Area</h4>
+                            <p class="text-muted">Exclusive private dining for large groups. Table 22.</p>
+                            <div class="d-flex justify-content-between">
+                                <span class="badge bg-primary">Up to 30 people</span>
+                                <span class="text-muted">Special Priority</span>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">1×30 seater U-shaped table</small>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </main>
-        
-        <!-- Footer -->
-        <footer class="bg-gray-800 text-white py-8">
-            <div class="container mx-auto px-4">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div>
-                        <h3 class="text-lg font-semibold mb-4">Gourmet Delights</h3>
-                        <p class="text-gray-400">Experience the finest dining with our exquisite menu and exceptional service.</p>
-                    </div>
-                    <div>
-                        <h3 class="text-lg font-semibold mb-4">Contact Us</h3>
-                        <address class="text-gray-400 not-italic">
-                            <p>123 Gourmet Street</p>
-                            <p>Foodie City, FC 12345</p>
-                            <p>Phone: (555) 123-4567</p>
-                            <p>Email: info@gourmetdelights.com</p>
-                        </address>
-                    </div>
-                    <div>
-                        <h3 class="text-lg font-semibold mb-4">Hours</h3>
-                        <ul class="text-gray-400 space-y-1">
-                            <li>Monday - Thursday: 11:00 AM - 10:00 PM</li>
-                            <li>Friday - Saturday: 11:00 AM - 11:00 PM</li>
-                            <li>Sunday: 10:00 AM - 9:00 PM</li>
-                        </ul>
-                    </div>
-                </div>
-                <div class="border-t border-gray-700 mt-8 pt-6 text-center text-gray-400">
-                    <p>&copy; 2023 Gourmet Delights. All rights reserved.</p>
+                <div class="d-flex justify-content-between mt-4">
+                    <button class="btn btn-outline-secondary" disabled>Previous</button>
+                    <button class="btn btn-primary" id="nextToStep2">Next</button>
                 </div>
             </div>
-        </footer>
+
+            <!-- Step 2: Select Date & Time -->
+            <div class="booking-form mb-4 d-none" id="step2">
+                <h3 class="mb-4">2. Select Date & Time</h3>
+                
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <label for="reservationDate" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="reservationDate" min="{{ today }}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="partySize" class="form-label">Party Size</label>
+                        <select class="form-select" id="partySize">
+                            <option value="1">1 person</option>
+                            <option value="2" selected>2 people</option>
+                            <option value="3">3 people</option>
+                            <option value="4">4 people</option>
+                            <option value="5">5 people</option>
+                            <option value="6">6 people</option>
+                            <option value="7">7 people</option>
+                            <option value="8">8 people</option>
+                            <option value="9">9 people</option>
+                            <option value="10">10 people</option>
+                            <option value="11-20">11-20 people</option>
+                            <option value="21-30">21-30 people</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h5>Available Time Slots</h5>
+                    <div id="timeSlots" class="d-flex flex-wrap">
+                        <p class="text-muted">Please select a date to see available time slots</p>
+                    </div>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-4">
+                    <button class="btn btn-outline-secondary" id="backToStep1">Previous</button>
+                    <button class="btn btn-primary" id="nextToStep3" disabled>Next</button>
+                </div>
+            </div>
+
+            <!-- Step 3: Guest Information -->
+            <div class="booking-form mb-4 d-none" id="step3">
+                <h3 class="mb-4">3. Your Information</h3>
+                
+                <div id="reservationSummary" class="alert alert-info mb-4">
+                    <h5>Reservation Details</h5>
+                    <p id="summaryText" class="mb-0"></p>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="fullName" class="form-label">Full Name *</label>
+                        <input type="text" class="form-control" id="fullName" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="email" class="form-label">Email Address *</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="phone" class="form-label">Phone Number *</label>
+                        <input type="tel" class="form-control" id="phone" required>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label for="specialRequests" class="form-label">Special Requests (Optional)</label>
+                        <textarea class="form-control" id="specialRequests" rows="3" placeholder="Any special requirements or requests?"></textarea>
+                    </div>
+                </div>
+                
+                <div class="form-check mb-4">
+                    <input class="form-check-input" type="checkbox" id="termsCheck" required>
+                    <label class="form-check-label" for="termsCheck">
+                        I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">terms and conditions</a> *
+                    </label>
+                </div>
+                
+                <div class="d-flex justify-content-between">
+                    <button class="btn btn-outline-secondary" id="backToStep2">Previous</button>
+                    <button class="btn btn-success" id="confirmBooking">Confirm Booking</button>
+                </div>
+            </div>
+            
+            <!-- Confirmation Step -->
+            <div class="booking-form text-center d-none" id="confirmation">
+                <div class="py-5">
+                    <div class="mb-4">
+                        <div class="checkmark-circle">
+                            <div class="checkmark"></div>
+                        </div>
+                    </div>
+                    <h3 class="mb-3">Reservation Confirmed!</h3>
+                    <p class="lead mb-4" id="confirmationMessage"></p>
+                    <div class="alert alert-success" id="reservationDetails">
+                        <!-- Reservation details will be inserted here by JavaScript -->
+                    </div>
+                    <p class="text-muted">A confirmation has been sent to your email.</p>
+                    <div class="mt-4">
+                        <a href="/" class="btn btn-primary me-2">Back to Home</a>
+                        <a href="#" class="btn btn-outline-secondary" id="makeAnotherBooking">Make Another Reservation</a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+</div>
 
-    <!-- Vue.js -->
-    <script src="https://unpkg.com/vue@3.2.31/dist/vue.global.prod.js"></script>
-    <script>
-        const { createApp, ref, computed, onMounted } = Vue;
+<!-- Terms & Conditions Modal -->
+<div class="modal fade" id="termsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Terms & Conditions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6>Reservation Policy</h6>
+                <p>We hold reservations for 15 minutes past the scheduled time. After this, we may release your table to other guests.</p>
+                
+                <h6>Cancellation Policy</h6>
+                <p>Please notify us at least 2 hours in advance if you need to cancel or modify your reservation to avoid a cancellation fee.</p>
+                
+                <h6>Large Parties</h6>
+                <p>For parties of 8 or more, a credit card is required to secure the reservation. A cancellation fee may apply for no-shows or late cancellations.</p>
+                
+                <h6>Seating Preferences</h6>
+                <p>While we do our best to accommodate seating preferences, we cannot guarantee specific tables or areas of the restaurant.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get today's date in YYYY-MM-DD format
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('reservationDate').min = today;
         
-        createApp({
-            setup() {
-                // Form data
-                const formData = ref({
-                    name: '',
-                    email: '',
-                    phone: '',
-                    partySize: 2,
-                    date: '',
-                    time: '18:00',
-                    preferredView: '',
-                    specialRequests: ''
+        // Initialize variables to store user selections
+        let selectedSection = '';
+        let selectedDate = '';
+        let selectedTime = '';
+        let selectedPartySize = 2;
+        
+        // Step 1: Select Section
+        const sectionCards = document.querySelectorAll('.section-card');
+        sectionCards.forEach(card => {
+            card.addEventListener('click', function() {
+                // Remove selected class from all cards
+                sectionCards.forEach(c => c.classList.remove('selected'));
+                // Add selected class to clicked card
+                this.classList.add('selected');
+                selectedSection = this.dataset.section;
+            });
+        });
+        
+        // Next button (Step 1 -> Step 2)
+        document.getElementById('nextToStep2').addEventListener('click', function() {
+            if (!selectedSection) {
+                alert('Please select a seating area');
+                return;
+            }
+            
+            document.getElementById('step1').classList.add('d-none');
+            document.getElementById('step2').classList.remove('d-none');
+            document.getElementById('progressBar').style.width = '66%';
+            
+            // Update summary
+            updateSummary();
+        });
+        
+        // Date change handler
+        document.getElementById('reservationDate').addEventListener('change', function() {
+            selectedDate = this.value;
+            if (selectedDate && selectedPartySize) {
+                fetchAvailableTimes(selectedDate, selectedPartySize);
+            }
+        });
+        
+        // Party size change handler
+        document.getElementById('partySize').addEventListener('change', function() {
+            selectedPartySize = parseInt(this.value);
+            if (selectedDate && selectedPartySize) {
+                fetchAvailableTimes(selectedDate, selectedPartySize);
+            }
+        });
+        
+        // Time slot click handler
+        document.getElementById('timeSlots').addEventListener('click', function(e) {
+            if (e.target.classList.contains('time-slot')) {
+                // Remove selected class from all time slots
+                document.querySelectorAll('.time-slot').forEach(slot => {
+                    slot.classList.remove('selected');
                 });
                 
-                // UI state
-                const isLoading = ref(false);
-                const error = ref('');
-                const showSuggestions = ref(false);
-                const bookingConfirmed = ref(false);
-                const suggestedTables = ref([]);
-                const suggestionMessage = ref('');
-                const bookingDetails = ref({});
+                // Add selected class to clicked time slot
+                e.target.classList.add('selected');
+                selectedTime = e.target.dataset.time;
                 
-                // Available times for booking
-                const availableTimes = [
-                    '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00',
-                    '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00'
-                ];
+                // Enable next button
+                document.getElementById('nextToStep3').disabled = false;
                 
-                // Today's date in YYYY-MM-DD format
-                const today = new Date().toISOString().split('T')[0];
-                
-                // Format date for display
-                const formatDate = (dateString) => {
-                    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-                    return new Date(dateString).toLocaleDateString('en-US', options);
-                };
-                
-                // Format time for display
-                const formatTime = (dateString) => {
-                    const options = { hour: '2-digit', minute: '2-digit', hour12: true };
-                    return new Date(dateString).toLocaleTimeString('en-US', options);
-                };
-                
-                // Check table availability
-                const checkAvailability = async () => {
-                    if (!formData.value.date) {
-                        error.value = 'Please select a date';
+                // Update summary
+                updateSummary();
+            }
+        });
+        
+        // Back to Step 1
+        document.getElementById('backToStep1').addEventListener('click', function() {
+            document.getElementById('step2').classList.add('d-none');
+            document.getElementById('step1').classList.remove('d-none');
+            document.getElementById('progressBar').style.width = '33%';
+        });
+        
+        // Next to Step 3
+        document.getElementById('nextToStep3').addEventListener('click', function() {
+            if (!selectedTime) {
+                alert('Please select a time slot');
+                return;
+            }
+            
+            document.getElementById('step2').classList.add('d-none');
+            document.getElementById('step3').classList.remove('d-none');
+            document.getElementById('progressBar').style.width = '100%';
+        });
+        
+        // Back to Step 2
+        document.getElementById('backToStep2').addEventListener('click', function() {
+            document.getElementById('step3').classList.add('d-none');
+            document.getElementById('step2').classList.remove('d-none');
+            document.getElementById('progressBar').style.width = '66%';
+        });
+        
+        // Confirm Booking
+        document.getElementById('confirmBooking').addEventListener('click', function() {
+            // Validate form
+            const fullName = document.getElementById('fullName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const termsChecked = document.getElementById('termsCheck').checked;
+            
+            if (!fullName || !email || !phone) {
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            if (!termsChecked) {
+                alert('Please agree to the terms and conditions');
+                return;
+            }
+            
+            // Prepare reservation data
+            const reservationData = {
+                section: selectedSection,
+                date: selectedDate,
+                time: selectedTime,
+                partySize: selectedPartySize,
+                customerName: fullName,
+                email: email,
+                phone: phone,
+                specialRequests: document.getElementById('specialRequests').value.trim()
+            };
+            
+            // Send reservation to server
+            submitReservation(reservationData);
+        });
+        
+        // Make Another Booking
+        document.getElementById('makeAnotherBooking').addEventListener('click', function(e) {
+            e.preventDefault();
+            // Reset form
+            document.getElementById('confirmation').classList.add('d-none');
+            document.getElementById('step1').classList.remove('d-none');
+            document.getElementById('progressBar').style.width = '33%';
+            
+            // Reset form fields
+            document.querySelectorAll('input, textarea').forEach(input => {
+                input.value = '';
+            });
+            
+            // Reset selections
+            selectedSection = '';
+            selectedDate = '';
+            selectedTime = '';
+            selectedPartySize = 2;
+            
+            // Reset UI
+            document.querySelectorAll('.section-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            document.getElementById('partySize').value = '2';
+            document.getElementById('timeSlots').innerHTML = '<p class="text-muted">Please select a date to see available time slots</p>';
+        });
+        
+        // Function to fetch available time slots
+        function fetchAvailableTimes(date, partySize) {
+            const timeSlotsContainer = document.getElementById('timeSlots');
+            timeSlotsContainer.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+            
+            // Fetch from API
+            fetch(`/api/available-times?date=${date}&party_size=${partySize}&section=${selectedSection}`)
+                .then(response => response.json())
+                .then(data => {
+                    const availableTimes = data.available_times;
+                    
+                    if (availableTimes.length === 0) {
+                        timeSlotsContainer.innerHTML = '<p class="text-muted">No available time slots for the selected date and party size. Please try another date.</p>';
                         return;
                     }
                     
-                    isLoading.value = true;
-                    error.value = '';
-                    showSuggestions.value = false;
+                    let timeSlotsHTML = '';
+                    availableTimes.forEach(time => {
+                        timeSlotsHTML += `<div class="time-slot" data-time="${time}">${time}</div>`;
+                    });
                     
-                    try {
-                        // Convert date and time to ISO string
-                        const dateTime = new Date(`${formData.value.date}T${formData.value.time}`).toISOString();
-                        
-                        // Call the API to check availability
-                        const response = await fetch(`/api/availability?party_size=${formData.value.partySize}&reservation_time=${encodeURIComponent(dateTime)}&preferred_view=${formData.value.preferredView}`);
-                        
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(errorData.detail || 'Failed to check availability');
-                        }
-                        
-                        const data = await response.json();
-                        
-                        if (data.tables && data.tables.length > 0) {
-                            suggestedTables.value = data.tables;
-                            suggestionMessage.value = data.is_exact_match 
-                                ? 'We found the perfect table for you!' 
-                                : 'We found some great alternatives for your party:';
-                        } else {
-                            suggestionMessage.value = data.message || 'No tables available for the selected criteria.';
-                        }
-                        
-                        showSuggestions.value = true;
-                    } catch (err) {
-                        console.error('Error checking availability:', err);
-                        error.value = err.message || 'An error occurred while checking availability. Please try again.';
-                    } finally {
-                        isLoading.value = false;
-                    }
-                };
+                    timeSlotsContainer.innerHTML = timeSlotsHTML;
+                })
+                .catch(error => {
+                    console.error('Error fetching available times:', error);
+                    timeSlotsContainer.innerHTML = '<p class="text-danger">Error loading available times. Please try again.</p>';
+                });
+        }
+        
+        // Function to update reservation summary
+        function updateSummary() {
+            let summaryHTML = `
+                <p><strong>Section:</strong> ${selectedSection || 'Not selected'}</p>
+            `;
+            
+            if (selectedDate) {
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const dateObj = new Date(selectedDate);
+                const formattedDate = dateObj.toLocaleDateString('en-US', options);
                 
-                // Confirm booking
-                const confirmBooking = async (tableId) => {
-                    if (!formData.value.date) return;
-                    
-                    isLoading.value = true;
-                    error.value = '';
-                    
-                    try {
-                        // Convert date and time to ISO string
-                        const dateTime = new Date(`${formData.value.date}T${formData.value.time}`).toISOString();
-                        
-                        // Prepare reservation data
-                        const reservationData = {
-                            customer_name: formData.value.name,
-                            customer_email: formData.value.email,
-                            customer_phone: formData.value.phone,
-                            reservation_time: dateTime,
-                            party_size: formData.value.partySize,
-                            preferred_view: formData.value.preferredView || null,
-                            special_requests: formData.value.specialRequests || null,
-                            table_id: tableId
-                        };
-                        
-                        // Call the API to create reservation
-                        const response = await fetch('/api/reservations', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify(reservationData)
-                        });
-                        
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(errorData.detail || 'Failed to create reservation');
-                        }
-                        
-                        const data = await response.json();
-                        
-                        if (data.success) {
-                            bookingDetails.value = {
-                                ...data.reservation,
-                                reservation_time: new Date(data.reservation.reservation_time)
-                            };
-                            bookingConfirmed.value = true;
-                        } else if (data.suggestions) {
-                            // Handle alternative suggestions
-                            suggestedTables.value = data.suggestions.tables || [];
-                            suggestionMessage.value = data.message || 'We found some alternatives for your party:';
-                            showSuggestions.value = true;
-                        }
-                    } catch (err) {
-                        console.error('Error creating reservation:', err);
-                        error.value = err.message || 'An error occurred while creating your reservation. Please try again.';
-                    } finally {
-                        isLoading.value = false;
-                    }
-                };
+                summaryHTML += `<p><strong>Date:</strong> ${formattedDate}</p>`;
+            }
+            
+            if (selectedTime) {
+                summaryHTML += `<p><strong>Time:</strong> ${selectedTime}</p>`;
+            }
+            
+            summaryHTML += `<p><strong>Party Size:</strong> ${selectedPartySize} ${selectedPartySize === 1 ? 'person' : 'people'}</p>`;
+            
+            document.getElementById('summaryText').innerHTML = summaryHTML;
+        }
+        
+        // Function to submit reservation to the server
+        function submitReservation(reservationData) {
+            // Show loading state
+            const submitBtn = document.getElementById('confirmBooking');
+            const originalBtnText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+            
+            // Prepare reservation data for API
+            const apiData = {
+                customer_name: reservationData.customerName,
+                customer_email: reservationData.email,
+                customer_phone: reservationData.phone,
+                party_size: reservationData.partySize,
+                reservation_date: reservationData.date + 'T' + reservationData.time + ':00',
+                reservation_time: reservationData.time,
+                section_preference: reservationData.section,
+                special_requests: reservationData.specialRequests
+            };
+            
+            // Send to API
+            fetch('/api/reservations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(apiData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide the form and show confirmation
+                document.getElementById('step3').classList.add('d-none');
                 
-                // Reset the form
-                const resetForm = () => {
-                    formData.value = {
-                        name: formData.value.name,
-                        email: formData.value.email,
-                        phone: formData.value.phone,
-                        partySize: 2,
-                        date: '',
-                        time: '18:00',
-                        preferredView: '',
-                        specialRequests: ''
-                    };
-                    bookingConfirmed.value = false;
-                    showSuggestions.value = false;
-                    error.value = '';
-                };
-                
-                // Set today's date as default
-                onMounted(() => {
-                    formData.value.date = today;
+                // Format the reservation details for display
+                const formattedDate = new Date(reservationData.date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
                 });
                 
-                return {
-                    formData,
-                    isLoading,
-                    error,
-                    showSuggestions,
-                    bookingConfirmed,
-                    suggestedTables,
-                    suggestionMessage,
-                    bookingDetails,
-                    availableTimes,
-                    today,
-                    checkAvailability,
-                    confirmBooking,
-                    resetForm,
-                    formatDate,
-                    formatTime
-                };
-            },
-            filters: {
-                capitalize: function(value) {
-                    if (!value) return '';
-                    value = value.toString();
-                    return value.charAt(0).toUpperCase() + value.slice(1);
+                let reservationDetails = '';
+                
+                if (data.success) {
+                    reservationDetails = `
+                        <h5>Reservation Confirmed!</h5>
+                        <p><strong>Name:</strong> ${reservationData.customerName}</p>
+                        <p><strong>Date & Time:</strong> ${formattedDate} at ${reservationData.time}</p>
+                        <p><strong>Section:</strong> ${reservationData.section}</p>
+                        <p><strong>Party Size:</strong> ${reservationData.partySize} ${reservationData.partySize === 1 ? 'person' : 'people'}</p>
+                        ${reservationData.specialRequests ? `<p><strong>Special Requests:</strong> ${reservationData.specialRequests}</p>` : ''}
+                        <hr>
+                        <p class="mb-0">A confirmation has been sent to <strong>${reservationData.email}</strong></p>
+                    `;
+                } else {
+                    reservationDetails = `
+                        <h5>Alternative Options Available</h5>
+                        <p><strong>Message:</strong> ${data.message}</p>
+                        <p><strong>Name:</strong> ${reservationData.customerName}</p>
+                        <p><strong>Date & Time:</strong> ${formattedDate} at ${reservationData.time}</p>
+                        <p><strong>Party Size:</strong> ${reservationData.partySize} ${reservationData.partySize === 1 ? 'person' : 'people'}</p>
+                        <hr>
+                        <p class="mb-0">Please contact us to confirm your preferred alternative.</p>
+                    `;
                 }
-            }
-        }).mount('#app');
-    </script>
-    {% endraw %}
-</body>
-</html>
+                
+                document.getElementById('reservationDetails').innerHTML = reservationDetails;
+                document.getElementById('confirmation').classList.remove('d-none');
+                
+                // Reset button state
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+                
+                // Scroll to top
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            })
+            .catch(error => {
+                console.error('Error submitting reservation:', error);
+                alert('Error submitting reservation. Please try again.');
+                
+                // Reset button state
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+            });
+        }
+    });
+</script>
+{% endblock %}

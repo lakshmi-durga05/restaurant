@@ -1,0 +1,469 @@
+{% extends 'base.html' %}
+
+{% block title %}Restaurant AI Assistant{% endblock %}
+
+{% block content %}
+<div class="mb-8 text-center">
+    <h1 class="text-4xl font-bold text-gray-900 mb-4">Restaurant AI Assistant</h1>
+    <p class="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+        Experience fine dining with breathtaking views of the lake and gardens.
+        Our AI-powered reservation system makes booking your perfect table effortless.
+    </p>
+    <div class="flex flex-wrap justify-center gap-4">
+        <div class="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium">🏞️ Lake View</div>
+        <div class="bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-medium">🌸 Garden View</div>
+        <div class="bg-purple-100 text-purple-800 px-4 py-2 rounded-full text-sm font-medium">🏠 Indoor Dining</div>
+    </div>
+</div>
+
+<!-- Reservation Section -->
+<div id="reservations" class="mb-16">
+    <div class="bg-white rounded-2xl shadow-xl p-8">
+        <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">
+            Make a Reservation
+        </h2>
+        
+        <!-- Natural Language Input -->
+        <div class="mb-8">
+            <h3 class="text-xl font-semibold text-gray-700 mb-4">
+                💬 Tell us what you need (or use the form below)
+            </h3>
+            <div class="flex gap-4">
+                <input type="text" 
+                       id="naturalInput" 
+                       placeholder="e.g., 'I need a table for 4 people at 7 PM tomorrow in the garden view'"
+                       class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <button onclick="processNaturalRequest()" 
+                        class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Ask AI
+                </button>
+            </div>
+            <div id="naturalResponse" class="mt-4 p-4 bg-gray-50 rounded-lg hidden"></div>
+        </div>
+
+        <!-- Traditional Form -->
+        <form id="reservationForm" class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                    <input type="text" name="customer_name" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                    <input type="email" name="customer_email" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Phone (optional)</label>
+                    <input type="tel" name="customer_phone"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Party Size</label>
+                    <select name="party_size" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">Select party size</option>
+                        <option value="2">2 people</option>
+                        <option value="4">4 people</option>
+                        <option value="6">6 people</option>
+                        <option value="8">8 people</option>
+                        <option value="10">10 people</option>
+                        <option value="12">12 people</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                    <input type="date" name="reservation_date" required
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Time</label>
+                    <select name="reservation_time" required
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">Select time</option>
+                        <option value="11:00">11:00 AM</option>
+                        <option value="11:30">11:30 AM</option>
+                        <option value="12:00">12:00 PM</option>
+                        <option value="12:30">12:30 PM</option>
+                        <option value="17:00">5:00 PM</option>
+                        <option value="17:30">5:30 PM</option>
+                        <option value="18:00">6:00 PM</option>
+                        <option value="18:30">6:30 PM</option>
+                        <option value="19:00">7:00 PM</option>
+                        <option value="19:30">7:30 PM</option>
+                        <option value="20:00">8:00 PM</option>
+                        <option value="20:30">8:30 PM</option>
+                        <option value="21:00">9:00 PM</option>
+                        <option value="21:30">9:30 PM</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Section Preference</label>
+                    <select name="section_preference"
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="any">Any section</option>
+                        <option value="lake view">Lake View</option>
+                        <option value="garden view">Garden View</option>
+                        <option value="normal">Indoor</option>
+                    </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Special Requests (optional)</label>
+                    <textarea name="special_requests" rows="3"
+                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Any special requests or dietary requirements?"></textarea>
+                </div>
+            </div>
+            
+            <div class="text-center">
+                <button type="submit" 
+                        class="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all transform hover:scale-105 font-semibold text-lg">
+                    Book Your Table
+                </button>
+            </div>
+        </form>
+        
+        <div id="reservationResponse" class="mt-6 p-4 rounded-lg hidden"></div>
+    </div>
+</div>
+
+<!-- FAQ Section -->
+<div id="faq" class="mb-16">
+    <div class="bg-white rounded-2xl shadow-xl p-8">
+        <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">
+            Ask Me Anything
+        </h2>
+        <p class="text-gray-600 text-center mb-8">
+            Our AI host is here to answer your questions about our restaurant, policies, and services.
+        </p>
+        
+        <!-- FAQ Chat Interface -->
+        <div class="max-w-2xl mx-auto">
+            <div class="flex gap-4 mb-4">
+                <input type="text" 
+                       id="faqInput" 
+                       placeholder="Ask about our hours, menu, policies, or anything else..."
+                       class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <button onclick="askFAQ()" 
+                        class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    Ask
+                </button>
+            </div>
+            
+            <div id="faqChat" class="space-y-4 max-h-96 overflow-y-auto">
+                <div class="chat-bubble bg-blue-100 p-4 rounded-lg">
+                    <div class="font-semibold text-blue-800">AI Host:</div>
+                    <div class="text-blue-700">Hello! I'm your AI host at Lakeview Gardens. How can I help you today? Feel free to ask about our hours, menu, reservation policies, or anything else!</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick FAQ Examples -->
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button onclick="askQuickFAQ('What are your opening hours?')" 
+                    class="text-left p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div class="font-medium text-gray-800">🕐 What are your opening hours?</div>
+            </button>
+            <button onclick="askQuickFAQ('What is your cancellation policy?')" 
+                    class="text-left p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div class="font-medium text-gray-800">❌ What is your cancellation policy?</div>
+            </button>
+            <button onclick="askQuickFAQ('Do you have vegetarian options?')" 
+                    class="text-left p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div class="font-medium text-gray-800">🥗 Do you have vegetarian options?</div>
+            </button>
+            <button onclick="askQuickFAQ('What are your signature dishes?')" 
+                    class="text-left p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div class="font-medium text-gray-800">🍽️ What are your signature dishes?</div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Contact Section -->
+<div id="contact" class="mb-16">
+    <div class="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl p-8 text-center">
+        <h2 class="text-3xl font-bold mb-4">Need Help?</h2>
+        <p class="text-xl mb-6">Our team is here to assist you with any questions or special requests.</p>
+        <div class="flex flex-col md:flex-row gap-4 justify-center">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">📞</span>
+                <span>(555) 123-4567</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">📧</span>
+                <span>info@lakeviewgardens.com</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">📍</span>
+                <span>123 Lakeview Drive, Scenic City</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Section -->
+<section class="py-16 bg-blue-50 border-t">
+    <div class="max-w-6xl mx-auto px-4">
+        <h2 class="text-3xl font-bold text-center mb-8 text-blue-800">🏢 Admin Dashboard</h2>
+        
+        <div class="grid md:grid-cols-2 gap-8">
+            <!-- Customer Database -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold mb-4 text-blue-700">👥 Customer Database</h3>
+                <p class="text-gray-600 mb-4">View all customer information and reservations</p>
+                <button onclick="loadCustomerData()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    View Customers
+                </button>
+                <div id="customerData" class="mt-4 hidden"></div>
+            </div>
+            
+            <!-- Reservation Overview -->
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold mb-4 text-blue-700">📊 Reservation Overview</h3>
+                <p class="text-gray-600 mb-4">See all reservations with table assignments</p>
+                <button onclick="loadReservationData()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                    View Reservations
+                </button>
+                <div id="reservationData" class="mt-4 hidden"></div>
+            </div>
+        </div>
+    </div>
+ </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Set minimum date to today
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelector('input[name="reservation_date"]').min = today;
+});
+
+// Process natural language reservation request
+async function processNaturalRequest() {
+    const input = document.getElementById('naturalInput');
+    const responseDiv = document.getElementById('naturalResponse');
+    const text = input.value.trim();
+    
+    if (!text) {
+        alert('Please enter your request');
+        return;
+    }
+    
+    responseDiv.innerHTML = '<div class="text-blue-600">🤔 Processing your request...</div>';
+    responseDiv.classList.remove('hidden');
+    
+    try {
+        const response = await fetch('/api/reservations/natural', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                text: text,
+                email: 'guest@example.com', // Would normally get from user
+                phone: ''
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            responseDiv.innerHTML = `<div class="text-green-600">✅ ${result.message}</div>`;
+        } else {
+            responseDiv.innerHTML = `<div class="text-orange-600">💡 ${result.message}</div>`;
+        }
+    } catch (error) {
+        responseDiv.innerHTML = '<div class="text-red-600">❌ Error processing request. Please try again.</div>';
+    }
+}
+
+// Handle traditional form submission
+document.getElementById('reservationForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData.entries());
+    
+    // Convert date to proper format
+    if (data.reservation_date) {
+        data.reservation_date = new Date(data.reservation_date).toISOString();
+    }
+    
+    const responseDiv = document.getElementById('reservationResponse');
+    responseDiv.innerHTML = '<div class="text-blue-600">🔄 Processing your reservation...</div>';
+    responseDiv.classList.remove('hidden');
+    
+    try {
+        const response = await fetch('/api/reservations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            responseDiv.innerHTML = `<div class="text-green-600">✅ ${result.message}</div>`;
+            this.reset();
+        } else {
+            responseDiv.innerHTML = `<div class="text-orange-600">💡 ${result.message}</div>`;
+        }
+    } catch (error) {
+        responseDiv.innerHTML = '<div class="text-red-600">❌ Error creating reservation. Please try again.</div>';
+    }
+});
+
+// Ask FAQ question
+async function askFAQ() {
+    const input = document.getElementById('faqInput');
+    const question = input.value.trim();
+    
+    if (!question) {
+        alert('Please enter a question');
+        return;
+    }
+    
+    addChatMessage('user', question);
+    input.value = '';
+    
+    try {
+        const response = await fetch('/api/faq', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ question: question })
+        });
+        
+        const result = await response.json();
+        addChatMessage('ai', result.answer);
+    } catch (error) {
+        addChatMessage('ai', 'Sorry, I encountered an error. Please try again.');
+    }
+}
+
+// Ask quick FAQ
+function askQuickFAQ(question) {
+    document.getElementById('faqInput').value = question;
+    askFAQ();
+}
+
+// Add chat message
+function addChatMessage(sender, message) {
+    const chatDiv = document.getElementById('faqChat');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-bubble ${sender === 'user' ? 'bg-gray-100 ml-8' : 'bg-blue-100 mr-8'}`;
+    
+    const senderName = sender === 'user' ? 'You' : 'AI Host';
+    const textColor = sender === 'user' ? 'text-gray-800' : 'text-blue-800';
+    const messageColor = sender === 'user' ? 'text-gray-700' : 'text-blue-700';
+    
+    messageDiv.innerHTML = `
+        <div class="font-semibold ${textColor}">${senderName}:</div>
+        <div class="${messageColor}">${message}</div>
+    `;
+    
+    chatDiv.appendChild(messageDiv);
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+}
+
+// Load customer data for admin
+async function loadCustomerData() {
+    const dataDiv = document.getElementById('customerData');
+    dataDiv.innerHTML = '<div class="text-blue-600">🔄 Loading customer data...</div>';
+    dataDiv.classList.remove('hidden');
+    
+    try {
+        const response = await fetch('/api/admin/customers');
+        const result = await response.json();
+        
+        let html = `<h4 class="font-semibold mb-3">Total Customers: ${result.total_customers}</h4>`;
+        
+        if (result.customers.length > 0) {
+            html += '<div class="overflow-x-auto"><table class="min-w-full border border-gray-300">';
+            html += '<thead><tr class="bg-gray-100">';
+            html += '<th class="border p-2 text-left">Name</th>';
+            html += '<th class="border p-2 text-left">Email</th>';
+            html += '<th class="border p-2 text-left">Phone</th>';
+            html += '<th class="border p-2 text-left">Party</th>';
+            html += '<th class="border p-2 text-left">Date</th>';
+            html += '<th class="border p-2 text-left">Time</th>';
+            html += '<th class="border p-2 text-left">Status</th>';
+            html += '</tr></thead><tbody>';
+            
+            result.customers.forEach(customer => {
+                html += `<tr class="border-b">`;
+                html += `<td class="border p-2">${customer.customer_name}</td>`;
+                html += `<td class="border p-2">${customer.customer_email}</td>`;
+                html += `<td class="border p-2">${customer.customer_phone || 'N/A'}</td>`;
+                html += `<td class="border p-2">${customer.party_size}</td>`;
+                html += `<td class="border p-2">${customer.reservation_date}</td>`;
+                html += `<td class="border p-2">${customer.reservation_time}</td>`;
+                html += `<td class="border p-2"><span class="px-2 py-1 rounded text-xs ${customer.status === 'confirmed' ? 'bg-green-100 text-green-800' : customer.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}">${customer.status}</span></td>`;
+                html += `</tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+        } else {
+            html += '<p class="text-gray-500">No customers found.</p>';
+        }
+        
+        dataDiv.innerHTML = html;
+    } catch (error) {
+        dataDiv.innerHTML = '<div class="text-red-600">❌ Error loading customer data</div>';
+    }
+}
+
+// Load reservation data for admin
+async function loadReservationData() {
+    const dataDiv = document.getElementById('reservationData');
+    dataDiv.innerHTML = '<div class="text-green-600">🔄 Loading reservation data...</div>';
+    dataDiv.classList.remove('hidden');
+    
+    try {
+        const response = await fetch('/api/admin/reservations');
+        const result = await response.json();
+        
+        let html = `<h4 class="font-semibold mb-3">Total Reservations: ${result.total_reservations}</h4>`;
+        
+        if (result.reservations.length > 0) {
+            html += '<div class="overflow-x-auto"><table class="min-w-full border border-gray-300">';
+            html += '<thead><tr class="bg-gray-100">';
+            html += '<th class="border p-2 text-left">Customer</th>';
+            html += '<th class="border p-2 text-left">Party</th>';
+            html += '<th class="border p-2 text-left">Date</th>';
+            html += '<th class="border p-2 text-left">Time</th>';
+            html += '<th class="border p-2 text-left">Table</th>';
+            html += '<th class="border p-2 text-left">Section</th>';
+            html += '<th class="border p-2 text-left">Status</th>';
+            html += '</tr></thead><tbody>';
+            
+            result.reservations.forEach(reservation => {
+                html += `<tr class="border-b">`;
+                html += `<td class="border p-2">${reservation.customer_name}</td>`;
+                html += `<td class="border p-2">${reservation.party_size}</td>`;
+                html += `<td class="border p-2">${reservation.date}</td>`;
+                html += `<td class="border p-2">${reservation.time}</td>`;
+                html += `<td class="border p-2">${reservation.table_number}</td>`;
+                html += `<td class="border p-2">${reservation.section_name}</td>`;
+                html += `<td class="border p-2"><span class="px-2 py-1 rounded text-xs ${reservation.status === 'confirmed' ? 'bg-green-100 text-green-800' : reservation.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}">${reservation.status}</span></td>`;
+                html += `</tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+        } else {
+            html += '<p class="text-gray-500">No reservations found.</p>';
+        }
+        
+        dataDiv.innerHTML = html;
+    } catch (error) {
+        dataDiv.innerHTML = '<div class="text-red-600">❌ Error loading reservation data</div>';
+    }
+}
+</script>
+{% endblock %}

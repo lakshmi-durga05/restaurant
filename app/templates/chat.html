@@ -1,0 +1,293 @@
+{% extends 'base.html' %}
+
+{% block title %}Chat Assistant — Lakeview Gardens{% endblock %}
+
+{% block content %}
+<style>
+  /* Make this page go full width and height */
+  main { max-width: 100% !important; padding-left: 0 !important; padding-right: 0 !important; }
+  /* Add breathing room so footer never covers content */
+  .page-pad-bottom { padding-bottom: 96px; }
+  /* Cap availability image height and keep aspect */
+  #seatMap { max-height: 420px; object-fit: contain; }
+  @media (max-width: 768px){
+    #seatMap { max-width: 95%; max-height: 320px; }
+  }
+</style>
+
+<div class="w-full min-h-[calc(100vh-120px)] flex flex-col page-pad-bottom">
+  <!-- Header -->
+  <div class="px-4 md:px-10 py-4">
+    <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Friendly Chat Assistant</h1>
+    <p class="text-gray-600 mt-1">Book tables, get suggestions, check live availability, ask about hours, address, contact, dishes, and pre-orders.</p>
+  </div>
+
+  <!-- Chat panel -->
+  <div class="flex-1 px-2 md:px-6">
+    <div class="bg-white rounded-2xl shadow-xl flex flex-col h-[calc(100vh-220px)]">
+      <div id="chat" class="flex-1 p-4 md:p-6 overflow-y-auto bg-gray-50 rounded-t-2xl"></div>
+      <div class="p-3 md:p-4 border-t rounded-b-2xl">
+        <div class="flex flex-wrap items-center gap-2">
+          <input id="msg" type="text" placeholder="Type your message or use the mic…" class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          <button id="mic" title="Hold to talk" class="px-3 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">🎤</button>
+          <button id="send" class="px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Send</button>
+          <button id="btnCustomers" class="ml-auto px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">View Customers</button>
+          <button id="btnDB" class="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">View Database</button>
+        </div>
+        <div id="seatMapWrap" class="mt-6 hidden relative">
+          <button id="closeSeat" title="Close" class="absolute -top-3 -right-3 bg-red-600 text-white rounded-full w-8 h-8 leading-8 text-center shadow hover:bg-red-700">✕</button>
+          <div class="text-sm text-gray-600 mb-2">Blue = Booked, Brown = Available</div>
+          <img id="seatMap" src="" alt="Seat Map" class="max-w-[80%] mx-auto border rounded"/>
+          <div class="text-center mt-2 text-sm"><a id="seatMapLink" href="#" target="_blank" rel="noopener" class="text-blue-700 underline">Open seat map in a new tab</a></div>
+        </div>
+        <div id="waWrap" class="mt-3 hidden">
+          <a id="waLink" target="_blank" rel="noopener" class="text-blue-700 underline">Open WhatsApp confirmation</a>
+        </div>
+        <div id="qrWrap" class="mt-4 hidden">
+          <div class="text-sm text-gray-700 mb-2">Quick replies</div>
+          <div id="qrChips" class="flex flex-wrap gap-2"></div>
+        </div>
+        <div id="dataWrap" class="mt-6 hidden relative">
+          <button id="closeData" title="Close" class="absolute -top-3 -right-3 bg-red-600 text-white rounded-full w-8 h-8 leading-8 text-center shadow hover:bg-red-700">✕</button>
+          <div class="text-sm font-semibold text-gray-700 mb-2" id="dataTitle"></div>
+          <div class="overflow-x-auto">
+            <table id="dataTable" class="min-w-full border divide-y divide-gray-200 text-sm">
+              <thead class="bg-gray-50" id="dataThead"></thead>
+              <tbody class="bg-white divide-y divide-gray-100" id="dataTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const chat = document.getElementById('chat');
+  const msg = document.getElementById('msg');
+  const send = document.getElementById('send');
+  const seatWrap = document.getElementById('seatMapWrap');
+  const seatImg = document.getElementById('seatMap');
+  const mic = document.getElementById('mic');
+  const btnCustomers = document.getElementById('btnCustomers');
+  const btnDB = document.getElementById('btnDB');
+  const closeSeat = document.getElementById('closeSeat');
+  const closeData = document.getElementById('closeData');
+  const seatMapLink = document.getElementById('seatMapLink');
+  const waWrap = document.getElementById('waWrap');
+  const waLink = document.getElementById('waLink');
+  const qrWrap = document.getElementById('qrWrap');
+  const qrChips = document.getElementById('qrChips');
+  const dataWrap = document.getElementById('dataWrap');
+  const dataTitle = document.getElementById('dataTitle');
+  const dataThead = document.getElementById('dataThead');
+  const dataTbody = document.getElementById('dataTbody');
+
+  let sessionId = '';
+
+  function speak(text){
+    try {
+      if (!('speechSynthesis' in window)) return;
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    } catch(e){}
+  }
+
+  function clearQuickReplies(){ qrWrap.classList.add('hidden'); qrChips.innerHTML=''; }
+
+  function makeChip(label, onClick){
+    const b = document.createElement('button');
+    b.className = 'px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded-full text-gray-800';
+    b.textContent = label;
+    b.onclick = onClick;
+    return b;
+  }
+
+  function updateQuickReplies(botText){
+    clearQuickReplies();
+    const t = (botText||'').toLowerCase();
+    if(t.includes('how many people')){
+      qrWrap.classList.remove('hidden');
+      [2,3,4,5,6,8].forEach(n=> qrChips.appendChild(makeChip(String(n), ()=>{ msg.value=String(n); sendMessage(); })));
+      return;
+    }
+    if(t.includes('which date would you like')){
+      qrWrap.classList.remove('hidden');
+      // today / tomorrow in YYYY-MM-DD
+      const now = new Date();
+      const pad = (x)=> String(x).padStart(2,'0');
+      const today = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+      const tm = new Date(now.getTime()+24*60*60*1000);
+      const tomorrow = `${tm.getFullYear()}-${pad(tm.getMonth()+1)}-${pad(tm.getDate())}`;
+      qrChips.appendChild(makeChip('Today', ()=>{ msg.value=today; sendMessage(); }));
+      qrChips.appendChild(makeChip('Tomorrow', ()=>{ msg.value=tomorrow; sendMessage(); }));
+      return;
+    }
+    if(t.includes('what time works for you')){
+      qrWrap.classList.remove('hidden');
+      ['18:00','18:30','19:00','19:30','20:00'].forEach(h=> qrChips.appendChild(makeChip(h, ()=>{ msg.value=h; sendMessage(); })));
+      return;
+    }
+    // If bot asks for a view/section preference, show view chips
+    if(t.includes('view') || t.includes('section')){
+      qrWrap.classList.remove('hidden');
+      [
+        {label:'Lake View', value:'lake view'},
+        {label:'Garden View', value:'garden view'},
+        {label:'Indoors', value:'indoors'},
+        {label:'Private', value:'private'}
+      ].forEach(v=> qrChips.appendChild(makeChip(v.label, ()=>{ msg.value=v.value; sendMessage(); })));
+      return;
+    }
+  }
+
+  function addBubble(role, text){
+    const wrap = document.createElement('div');
+    wrap.className = 'mb-3 flex ' + (role === 'user' ? 'justify-end' : 'justify-start');
+    const bubble = document.createElement('div');
+    bubble.className = (role === 'user' ? 'bg-gray-200 text-gray-900' : 'bg-blue-100 text-blue-900') + ' px-4 py-2 rounded-lg max-w-[100%] md:max-w-[80%] whitespace-pre-line';
+    bubble.textContent = text;
+    wrap.appendChild(bubble);
+    chat.appendChild(wrap);
+    chat.scrollTop = chat.scrollHeight;
+    if(role === 'bot') speak(text);
+    if(role === 'bot') updateQuickReplies(text);
+  }
+
+  async function callChat(message){
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, message })
+    });
+    const data = await res.json();
+    if(data.session_id) sessionId = data.session_id;
+    if(data.reply) addBubble('bot', data.reply);
+    if(data.image_url){
+      // Cache-bust so updates appear immediately
+      const sep = data.image_url.includes('?') ? '&' : '?';
+      const url = data.image_url + sep + 'ts=' + Date.now();
+      // Try inlining SVG to avoid MIME/cache issues
+      try{
+        const r = await fetch(url, {cache:'no-store'});
+        if(r.ok){
+          const svg = await r.text();
+          seatImg.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+          seatMapLink.href = url;
+          seatWrap.classList.remove('hidden');
+          try{ seatWrap.scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){}
+        } else {
+          // Fallback: just set direct URL
+          seatImg.src = url;
+          seatMapLink.href = url;
+          seatWrap.classList.remove('hidden');
+        }
+      }catch(e){
+        // Final fallback: show link
+        seatImg.removeAttribute('src');
+        seatMapLink.href = url;
+        seatWrap.classList.remove('hidden');
+      }
+    } else {
+      seatWrap.classList.add('hidden');
+    }
+    if(data.whatsapp_confirm_url){
+      waLink.href = data.whatsapp_confirm_url;
+      waWrap.classList.remove('hidden');
+    }
+    if(data.alternatives){
+      const altText = data.alternatives.map(a => `${a.section}: table ${a.table_number} (cap ${a.capacity})`).join(', ');
+      if(altText){ addBubble('bot', 'Alternatives: ' + altText); }
+    }
+  }
+
+  async function sendMessage(){
+    const text = (msg.value || '').trim();
+    if(!text) return;
+    addBubble('user', text);
+    msg.value='';
+    try{
+      await callChat(text);
+    }catch(e){
+      addBubble('bot', 'Sorry, something went wrong.');
+    }
+  }
+
+  // Initial greet from server with available views
+  (async function init(){
+    try{
+      await callChat('');
+    }catch(e){
+      addBubble('bot', 'Hello! How can I help you today?');
+    }
+  })();
+
+  send.addEventListener('click', sendMessage);
+  msg.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ sendMessage(); }});
+
+  // Voice input using Web Speech API (if available)
+  let recognition = null;
+  if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (e)=>{
+      const text = e.results[0][0].transcript;
+      msg.value = text;
+      sendMessage();
+    };
+  }
+  mic.addEventListener('click', ()=>{
+    if(recognition){
+      try{ recognition.start(); }catch(e){}
+    }else{
+      alert('Voice input not supported in this browser.');
+    }
+  });
+
+  // Admin data viewers
+  btnCustomers.addEventListener('click', async ()=>{
+    try{
+      const res = await fetch('/api/admin/customers');
+      const data = await res.json();
+      dataTitle.textContent = 'Customers';
+      dataThead.innerHTML = '<tr><th class="px-3 py-2 text-left">Name</th><th class="px-3 py-2 text-left">Email</th></tr>';
+      dataTbody.innerHTML = '';
+      (data.customers||[]).forEach(c=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="px-3 py-2">${c.customer_name||c.name||''}</td><td class="px-3 py-2">${c.customer_email||c.email||''}</td>`;
+        dataTbody.appendChild(tr);
+      });
+      dataWrap.classList.remove('hidden');
+    }catch(e){ addBubble('bot', 'Could not load customers.'); }
+  });
+  btnDB.addEventListener('click', async ()=>{
+    try{
+      const res = await fetch('/api/admin/reservations');
+      const data = await res.json();
+      dataTitle.textContent = 'Reservations Database';
+      dataThead.innerHTML = '<tr><th class="px-3 py-2 text-left">ID</th><th class="px-3 py-2 text-left">Name</th><th class="px-3 py-2 text-left">Email</th><th class="px-3 py-2 text-left">Party</th><th class="px-3 py-2 text-left">Date</th><th class="px-3 py-2 text-left">Time</th><th class="px-3 py-2 text-left">Section</th><th class="px-3 py-2 text-left">Status</th></tr>';
+      dataTbody.innerHTML = '';
+      (data.reservations||data.customers||[]).forEach(r=>{
+        const tr = document.createElement('tr');
+        const section = r.section_name || r.section_preference || '';
+        tr.innerHTML = `<td class="px-3 py-2">${r.id||''}</td><td class="px-3 py-2">${r.customer_name||r.name||''}</td><td class="px-3 py-2">${r.customer_email||r.email||''}</td><td class="px-3 py-2">${r.party_size||''}</td><td class="px-3 py-2">${r.date||r.reservation_date||''}</td><td class="px-3 py-2">${r.time||r.reservation_time||''}</td><td class="px-3 py-2">${section}</td><td class="px-3 py-2">${r.status||''}</td>`;
+        dataTbody.appendChild(tr);
+      });
+      dataWrap.classList.remove('hidden');
+    }catch(e){ addBubble('bot', 'Could not load reservations.'); }
+  });
+
+  // Close buttons
+  closeSeat.addEventListener('click', ()=>{ seatWrap.classList.add('hidden'); });
+  closeData.addEventListener('click', ()=>{ dataWrap.classList.add('hidden'); });
+})();
+</script>
+{% endblock %}

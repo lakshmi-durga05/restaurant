@@ -1,1 +1,1 @@
-# Initialize the app package
+# Restaurant Reservation Manager Package

@@ -14,6 +14,9 @@ class Settings:
     ollama_model: str = os.getenv("OLLAMA_MODEL", "llama3.1:8b")
     use_rag: bool = _as_bool(os.getenv("USE_RAG"), True)
     rag_top_k: int = int(os.getenv("RAG_TOP_K", "3"))
+    # Agentic AI
+    use_agents: bool = _as_bool(os.getenv("USE_AGENTS"), False)
+    agent_type: str = os.getenv("AGENT_TYPE", "langchain")  # langchain | crewai
 
 
 settings = Settings()
